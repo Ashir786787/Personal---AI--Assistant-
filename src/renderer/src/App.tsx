@@ -11,9 +11,15 @@ const TTS_STORAGE_KEY = 'ashirs.tts-enabled'
 export function App() {
   const { messages, busy, send } = useChat()
   const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem(TTS_STORAGE_KEY) === '1')
+  const [draft, setDraft] = useState('')
   const { speak, stop } = useSpeech(ttsEnabled)
 
-  const handleTranscript = useCallback((text: string) => send(text), [send])
+  const handleTranscript = useCallback((text: string): void => {
+    setDraft((prev) => {
+      const trimmed = prev.trim()
+      return trimmed.length > 0 ? `${trimmed} ${text}` : text
+    })
+  }, [])
   const voice = useVoiceRecorder(handleTranscript)
 
   useEffect(() => {
@@ -41,6 +47,8 @@ export function App() {
       <StatusBar micState={micState} lastProvider={lastProvider} busy={busy} />
       <MessageList messages={messages} />
       <ChatInput
+        value={draft}
+        onValueChange={setDraft}
         busy={busy}
         ttsEnabled={ttsEnabled}
         micListening={voice.recording}

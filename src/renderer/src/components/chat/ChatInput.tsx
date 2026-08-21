@@ -1,7 +1,9 @@
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { MicButton } from '../voice/MicButton'
 
 interface ChatInputProps {
+  value: string
+  onValueChange: (value: string) => void
   busy: boolean
   ttsEnabled: boolean
   micListening: boolean
@@ -13,6 +15,8 @@ interface ChatInputProps {
 }
 
 export function ChatInput({
+  value,
+  onValueChange,
   busy,
   ttsEnabled,
   micListening,
@@ -22,18 +26,17 @@ export function ChatInput({
   onToggleMic,
   onToggleTts
 }: ChatInputProps) {
-  const [draft, setDraft] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const submit = (): void => {
-    if (draft.trim().length === 0 || busy) return
-    onSend(draft)
-    setDraft('')
+    if (value.trim().length === 0 || busy) return
+    onSend(value)
+    onValueChange('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
 
-  const resize = (value: string): void => {
-    setDraft(value)
+  const resize = (next: string): void => {
+    onValueChange(next)
     const el = textareaRef.current
     if (!el) return
     el.style.height = 'auto'
@@ -53,7 +56,7 @@ export function ChatInput({
         <textarea
           ref={textareaRef}
           rows={1}
-          value={draft}
+          value={value}
           placeholder="Message ASHIR's AI…"
           onChange={(e) => resize(e.target.value)}
           onKeyDown={(e) => {
@@ -95,7 +98,7 @@ export function ChatInput({
         <button
           type="button"
           onClick={submit}
-          disabled={busy || draft.trim().length === 0}
+          disabled={busy || value.trim().length === 0}
           aria-label="Send message"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-base transition-opacity duration-fast hover:opacity-90 disabled:opacity-30"
         >
