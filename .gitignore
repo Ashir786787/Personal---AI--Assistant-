@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+
+# build output
+out/
+dist/
+release/
+coverage/
+
+# secrets — never commit
+.env
+.env.*
+!.env.example
+
+# user data / local state
+*.local
+userData/
+
+# logs
+*.log
+logs/
+
+# os noise
+Thumbs.db
+.DS_Store
+
+# editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
