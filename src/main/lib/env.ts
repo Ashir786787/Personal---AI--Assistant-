@@ -1,8 +1,19 @@
 import { config } from 'dotenv'
-import { resolve } from 'path'
+import { existsSync } from 'node:fs'
+import { join, resolve } from 'path'
+import { app } from 'electron'
 
-const envPath = resolve(process.cwd(), '.env')
-config({ path: envPath })
+function loadEnv(): void {
+  const candidates = [resolve(process.cwd(), '.env'), join(app.getAppPath(), '.env')]
+  for (const path of candidates) {
+    if (existsSync(path)) {
+      config({ path })
+      return
+    }
+  }
+}
+
+loadEnv()
 
 export function envKey(name: string): string | undefined {
   const value = process.env[name]

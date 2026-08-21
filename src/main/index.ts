@@ -52,7 +52,21 @@ function createMainWindow(): BrowserWindow {
     }
   })
 
-  mainWindow.on('ready-to-show', () => mainWindow.show())
+  mainWindow.on('ready-to-show', () => {
+    mainWindow.show()
+    mainWindow.focus()
+    mainWindow.flashFrame(true)
+  })
+
+  mainWindow.webContents.on('preload-error', (_event, path, error) => {
+    log('error', 'preload', `${path}: ${error.message}`)
+  })
+  mainWindow.webContents.on('did-fail-load', (_event, code, description, url) => {
+    log('error', 'window', `failed to load ${url}: ${code} ${description}`)
+  })
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    if (level >= 2) log('warn', 'renderer', `${message} (${sourceId}:${line})`)
+  })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://')) void shell.openExternal(url)
