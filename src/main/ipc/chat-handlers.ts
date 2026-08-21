@@ -10,6 +10,8 @@ import type { ChatTurn } from '../llm/provider'
 import type { ProviderRouter } from '../llm/router'
 import type { ToolRegistry } from '../tools/registry'
 import { extractToolAction } from '../tools/parse'
+import { getProposal, resolveProposal } from '../tools/proposals'
+import { executeOrganizationPlan } from '../fs/executor'
 import { log } from '../lib/logger'
 
 const MAX_INPUT_LENGTH = 8000
@@ -71,6 +73,35 @@ export function registerChatIpc(
 
   ipcMain.on(IPC.chatCancel, () => {
     active?.abort()
+  })
+
+  ipcMain.handle(IPC.actionDecide, (_event, raw: unknown) => {
+    const id =
+      typeof (raw as { id?: unknown })?.['id'] === 'string' ? (raw as { id: string }).id : ''
+    const approved = Boolean((raw as { approved?: unknown })?.approved)
+    const proposal = getProposal(id)
+    if (!proposal) return 'That proposal already expired or was handled'
+
+    resolveProposal(id)
+    if (!approved) {
+      log('info', 'action', `proposal ${id} cancelled by user`)
+      return 'Cancelled. Nothing was moved'
+    }
+
+    log('info', 'action', `proposal ${id} approved — executing ${proposal.moves.length} moves`)
+    const result = executeOrganizationPlan(proposal.sourceDir, proposal.moves)
+
+    const parts = [`✓ Moved ${result.moved} file${result.moved === 1 ? '' : 's'}`]
+    if (result.failed.length > 0) {
+      parts.push(
+        `${result.failed.length} could not move: ${result.failed.map((f) => f.fileName).join(', ')}`
+      )
+    }
+    const summary = `${parts.join('. ')} in "${proposal.sourceName}"`
+
+    memory.append('assistant', summary)
+    emit({ type: 'tool', name: 'organize_applied', argsSummary: summary })
+    return summary
   })
 }
 

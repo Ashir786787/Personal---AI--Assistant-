@@ -5,7 +5,9 @@ export const IPC = {
   chatCancel: 'chat:cancel',
   chatStream: 'chat:stream',
   statusSnapshot: 'status:snapshot',
-  voiceTranscribe: 'voice:transcribe'
+  voiceTranscribe: 'voice:transcribe',
+  actionProposed: 'action:proposed',
+  actionDecide: 'action:decide'
 } as const
 
 export interface VoiceRecording {
@@ -13,9 +15,18 @@ export interface VoiceRecording {
   mime: string
 }
 
+export interface ActionProposal {
+  id: string
+  title: string
+  detailLines: string[]
+  totalMoves: number
+}
+
 export interface AshirsBridge {
   sendChat(request: SendChatRequest): Promise<SendChatResponse>
   cancelChat(): void
   onStreamEvent(listener: (event: StreamEvent) => void): () => void
   transcribeVoice(recording: VoiceRecording): Promise<string>
+  onProposal(listener: (proposal: ActionProposal) => void): () => void
+  decideProposal(id: string, approved: boolean): Promise<string>
 }

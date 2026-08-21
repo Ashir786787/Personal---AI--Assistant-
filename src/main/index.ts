@@ -1,5 +1,6 @@
 import { join } from 'path'
 import { BrowserWindow, Menu, app, session, shell } from 'electron'
+import { IPC } from '@shared/ipc'
 import { ConversationMemory } from './conversation/memory'
 import { createGeminiProvider } from './llm/gemini'
 import { createGroqProvider } from './llm/groq'
@@ -109,7 +110,10 @@ if (!gotLock) {
 
     const router = new ProviderRouter([createGeminiProvider(), createGroqProvider()], 'gemini')
     const memory = new ConversationMemory()
-    registerChatIpc(mainWindow.webContents, router, memory, ToolRegistry.withDefaults())
+    const registry = ToolRegistry.withDefaults((proposal) => {
+      if (!mainWindow.isDestroyed()) mainWindow.webContents.send(IPC.actionProposed, proposal)
+    })
+    registerChatIpc(mainWindow.webContents, router, memory, registry)
     registerVoiceIpc(mainWindow.webContents)
 
     log('info', 'app', `started (packaged: ${app.isPackaged})`)

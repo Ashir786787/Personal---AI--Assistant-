@@ -67,11 +67,12 @@ describe('ToolRegistry', () => {
     )
   })
 
-  it('ships with the three read-only file tools', () => {
-    const registry = ToolRegistry.withDefaults()
+  it('ships with the read-only file tools including the organize proposer', () => {
+    const registry = ToolRegistry.withDefaults(() => {})
     expect(registry.has('list_folder')).toBe(true)
     expect(registry.has('folder_summary')).toBe(true)
     expect(registry.has('sandbox_overview')).toBe(true)
+    expect(registry.has('organize_folder')).toBe(true)
   })
 
   it('exposes mutating flag for the confirmation gate to use later', () => {

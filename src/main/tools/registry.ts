@@ -1,4 +1,5 @@
 import type { ToolAction, ToolDefinition } from '@shared/tools'
+import type { ActionProposal } from '@shared/ipc'
 import { readOnlyFileTools } from './file-tools'
 
 export class ToolExecutionError extends Error {}
@@ -33,9 +34,9 @@ export class ToolRegistry {
     return tool.execute(action.args)
   }
 
-  static withDefaults(): ToolRegistry {
+  static withDefaults(emitProposal: (proposal: ActionProposal) => void): ToolRegistry {
     const registry = new ToolRegistry()
-    for (const tool of readOnlyFileTools()) registry.register(tool)
+    for (const tool of readOnlyFileTools(emitProposal)) registry.register(tool)
     return registry
   }
 }

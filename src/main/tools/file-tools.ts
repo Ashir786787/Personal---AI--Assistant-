@@ -1,6 +1,9 @@
 import { listDirectory, summarizeByType, type FileEntry } from '../fs/listing'
 import { allowedRoots, resolveWithin } from '../fs/scope'
+import { planOrganization } from './organizer'
+import { createProposal } from './proposals'
 import type { ToolDefinition } from '@shared/tools'
+import type { ActionProposal } from '@shared/ipc'
 import { sep } from 'path'
 
 const MAX_LISTED_ITEMS = 40
@@ -83,6 +86,65 @@ export const sandboxOverviewTool: ToolDefinition = {
   }
 }
 
-export function readOnlyFileTools(): ToolDefinition[] {
-  return [listFolderTool, folderSummaryTool, sandboxOverviewTool]
+export function createOrganizeFolderTool(
+  emitProposal: (proposal: ActionProposal) => void
+): ToolDefinition {
+  return {
+    name: 'organize_folder',
+    description:
+      'Propose organizing a folder into typed subfolders. Returns a plan and shows the user a confirmation dialog. Nothing moves until they approve',
+    mutating: false,
+
+    async execute(args) {
+      const raw = typeof args['path'] === 'string' ? args['path'] : ''
+      const { absolutePath } = resolveWithin(raw)
+      const entries = await listDirectory(absolutePath)
+      const sourceName =
+        raw
+          .split(/[\\/]+/)
+          .filter(Boolean)
+          .pop() ?? raw
+
+      const plan = planOrganization(sourceName, entries)
+      if (plan.moves.length === 0) {
+        return `Nothing to organize in "${raw}". No matching files were found`
+      }
+
+      const proposal = createProposal({
+        sourceDir: absolutePath,
+        sourceName,
+        moves: plan.moves
+      })
+
+      const preview = plan.moves.slice(0, 10).map((m) => `${m.fileName} → ${m.toSubfolder}`)
+      const detailLines = [
+        ...preview,
+        ...(plan.moves.length > 10 ? [`…and ${plan.moves.length - 10} more`] : []),
+        ...(plan.skippedFolders > 0 ? [`${plan.skippedFolders} folders will be left alone`] : [])
+      ]
+
+      emitProposal({
+        id: proposal.id,
+        title: `Organize "${sourceName}"`,
+        detailLines,
+        totalMoves: plan.moves.length
+      })
+
+      return (
+        `A plan proposing ${plan.moves.length} file moves was shown to the user for approval (proposal ${proposal.id}). ` +
+        'Tell them to review it and press Approve or Cancel. Nothing has moved yet — never claim files were moved'
+      )
+    }
+  }
+}
+
+export function readOnlyFileTools(
+  emitProposal: (proposal: ActionProposal) => void
+): ToolDefinition[] {
+  return [
+    listFolderTool,
+    folderSummaryTool,
+    sandboxOverviewTool,
+    createOrganizeFolderTool(emitProposal)
+  ]
 }

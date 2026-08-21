@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { StatusBar } from './components/status/StatusBar'
 import { MessageList } from './components/chat/MessageList'
 import { ChatInput } from './components/chat/ChatInput'
+import { ConfirmationModal } from './components/confirm/ConfirmationModal'
 import { useChat } from './hooks/useChat'
 import { useVoiceRecorder } from './hooks/useVoiceRecorder'
 import { useSpeech } from './hooks/useSpeech'
+import { useProposals } from './hooks/useProposals'
 
 const TTS_STORAGE_KEY = 'ashirs.tts-enabled'
 
@@ -13,6 +15,7 @@ export function App() {
   const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem(TTS_STORAGE_KEY) === '1')
   const [draft, setDraft] = useState('')
   const { speak, stop } = useSpeech(ttsEnabled)
+  const { proposal, busy: deciding, outcome, decide, dismissOutcome } = useProposals()
 
   const handleTranscript = useCallback((text: string): void => {
     setDraft(text)
@@ -58,6 +61,17 @@ export function App() {
         onToggleMic={voice.toggle}
         onToggleTts={toggleTts}
       />
+      {outcome && (
+        <div
+          className={`action-toast ${outcome.approved ? 'toast-ok' : 'toast-cancel'}`}
+          onClick={dismissOutcome}
+        >
+          {outcome.message}
+        </div>
+      )}
+      {proposal && (
+        <ConfirmationModal proposal={proposal} busy={deciding} onDecide={(ok) => void decide(ok)} />
+      )}
     </div>
   )
 }
