@@ -21,6 +21,18 @@ export function useChat() {
   const stream = useRef<StreamState>({ messageId: null, provider: null })
 
   useEffect(() => {
+    if (typeof window.ashirs === 'undefined') {
+      setMessages([
+        {
+          id: 'error-bridge',
+          role: 'error',
+          content:
+            "The secure bridge to the assistant core is not available. If you are viewing this in a regular browser tab, close it and use the ASHIR's AI desktop window instead."
+        }
+      ])
+      return
+    }
+
     const unsubscribe = window.ashirs.onStreamEvent((event) => {
       switch (event.type) {
         case 'start': {

@@ -17,6 +17,13 @@ const CSP = [
 ].join('; ')
 
 function applySecurityPolicy(): void {
+  if (!app.isPackaged) {
+    session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
+      callback(permission === 'media')
+    })
+    return
+  }
+
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP] } })
   })
