@@ -44,8 +44,8 @@ export class ProviderRouter {
     return this.providers.size
   }
 
-  markRateLimited(id: ProviderId, retryAfterMs = 30_000): void {
-    this.cooldownUntil.set(id, Date.now() + retryAfterMs)
+  markRateLimited(id: ProviderId, retryAfterMs = 30_000, now = Date.now()): void {
+    this.cooldownUntil.set(id, now + retryAfterMs)
   }
 
   private usageCount(id: ProviderId, now: number): number {

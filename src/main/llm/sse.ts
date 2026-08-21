@@ -20,4 +20,9 @@ export async function* sseData(response: Response): AsyncGenerator<string> {
       boundary = buffer.indexOf('\n')
     }
   }
+
+  const tail = buffer.trimEnd()
+  if (tail.startsWith('data:')) {
+    yield tail.slice(5).trim()
+  }
 }
