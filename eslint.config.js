@@ -38,5 +38,16 @@ export default tseslint.config(
       'no-console': ['warn', { allow: ['error'] }]
     }
   },
+  {
+    files: ['scripts/**/*.{js,mjs}'],
+    languageOptions: {
+      globals: {
+        ...globals.node
+      }
+    },
+    rules: {
+      'no-console': 'off'
+    }
+  },
   prettier
 )
