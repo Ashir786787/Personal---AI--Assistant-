@@ -6,22 +6,29 @@ interface RecorderState {
   error: string | null
 }
 
+interface RecorderHooks {
+  onFinal: (text: string) => void
+  onInterim: (text: string) => void
+}
+
+const INTERIM_INTERVAL_MS = 3000
+const MIN_INTERIM_BYTES = 4096
+const MIN_FINAL_BYTES = 2048
+
 function pickMimeType(): string {
   if (typeof MediaRecorder === 'undefined') return 'audio/webm'
   if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus'
   return 'audio/webm'
 }
 
-export function useVoiceRecorder(
-  onTranscribed: (text: string) => void
-): RecorderState & { toggle: () => void } {
+export function useVoiceRecorder(hooks: RecorderHooks): RecorderState & { toggle: () => void } {
   const [state, setState] = useState<RecorderState>({ recording: false, level: 0, error: null })
   const streamRef = useRef<MediaStream | null>(null)
   const ctxRef = useRef<AudioContext | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const rafRef = useRef(0)
-  const onTranscribedRef = useRef(onTranscribed)
-  onTranscribedRef.current = onTranscribed
+  const hooksRef = useRef(hooks)
+  hooksRef.current = hooks
 
   const teardown = useCallback((): void => {
     cancelAnimationFrame(rafRef.current)
@@ -84,6 +91,34 @@ export function useVoiceRecorder(
 
     const mimeType = pickMimeType()
     const chunks: Blob[] = []
+    let finished = false
+    let interimInFlight = false
+
+    const transcribeSnapshot = async (): Promise<string> => {
+      const blob = new Blob(chunks, { type: mimeType })
+      const audio = await blob.arrayBuffer()
+      return window.ashirs.transcribeVoice({ data: audio, mime: mimeType })
+    }
+
+    const interimTimer = setInterval(() => {
+      if (finished || interimInFlight) return
+      const totalBytes = chunks.reduce((n, c) => n + c.size, 0)
+      if (totalBytes < MIN_INTERIM_BYTES) return
+
+      interimInFlight = true
+      void transcribeSnapshot()
+        .then((text) => {
+          const trimmed = text.trim()
+          if (!finished && trimmed.length > 0) hooksRef.current.onInterim(trimmed)
+        })
+        .catch(() => {
+          // interim failures stay invisible; the final pass decides
+        })
+        .finally(() => {
+          interimInFlight = false
+        })
+    }, INTERIM_INTERVAL_MS)
+
     const recorder = new MediaRecorder(stream, { mimeType })
 
     recorder.ondataavailable = (event) => {
@@ -91,10 +126,12 @@ export function useVoiceRecorder(
     }
 
     recorder.onstop = async () => {
+      finished = true
+      clearInterval(interimTimer)
       const blob = new Blob(chunks, { type: mimeType })
       teardown()
 
-      if (blob.size < 2048) {
+      if (blob.size < MIN_FINAL_BYTES) {
         setState({
           recording: false,
           level: 0,
@@ -106,7 +143,8 @@ export function useVoiceRecorder(
       try {
         const audio = await blob.arrayBuffer()
         const text = await window.ashirs.transcribeVoice({ data: audio, mime: mimeType })
-        if (text.length === 0) {
+        const trimmed = text.trim()
+        if (trimmed.length === 0) {
           setState({
             recording: false,
             level: 0,
@@ -115,7 +153,7 @@ export function useVoiceRecorder(
           return
         }
         setState({ recording: false, level: 0, error: null })
-        onTranscribedRef.current(text)
+        hooksRef.current.onFinal(trimmed)
       } catch (err) {
         setState({
           recording: false,

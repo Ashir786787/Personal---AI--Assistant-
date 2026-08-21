@@ -15,12 +15,12 @@ export function App() {
   const { speak, stop } = useSpeech(ttsEnabled)
 
   const handleTranscript = useCallback((text: string): void => {
-    setDraft((prev) => {
-      const trimmed = prev.trim()
-      return trimmed.length > 0 ? `${trimmed} ${text}` : text
-    })
+    setDraft(text)
   }, [])
-  const voice = useVoiceRecorder(handleTranscript)
+  const handleInterim = useCallback((text: string): void => {
+    setDraft(text)
+  }, [])
+  const voice = useVoiceRecorder({ onFinal: handleTranscript, onInterim: handleInterim })
 
   useEffect(() => {
     const last = messages[messages.length - 1]
