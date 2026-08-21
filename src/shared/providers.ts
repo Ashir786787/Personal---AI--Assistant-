@@ -6,6 +6,6 @@ export interface ModelInfo {
 }
 
 export const PROVIDER_MODELS: Record<ProviderId, ModelInfo> = {
-  gemini: { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+  gemini: { id: 'gemini-flash-latest', label: 'Gemini Flash' },
   groq: { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B (Groq)' }
 }
