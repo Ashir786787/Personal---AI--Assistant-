@@ -6,7 +6,7 @@ interface ChatInputProps {
   ttsEnabled: boolean
   micListening: boolean
   micLevel: number
-  voiceUnavailableReason: string | null
+  voiceNotice: string | null
   onSend: (text: string) => void
   onToggleMic: () => void
   onToggleTts: () => void
@@ -17,7 +17,7 @@ export function ChatInput({
   ttsEnabled,
   micListening,
   micLevel,
-  voiceUnavailableReason,
+  voiceNotice,
   onSend,
   onToggleMic,
   onToggleTts
@@ -42,9 +42,7 @@ export function ChatInput({
 
   return (
     <div className="border-t border-edge bg-panel px-4 py-3">
-      {voiceUnavailableReason && (
-        <p className="mb-2 font-mono text-[11px] text-warning">{voiceUnavailableReason}</p>
-      )}
+      {voiceNotice && <p className="mb-2 font-mono text-[11px] text-warning">{voiceNotice}</p>}
       <div className="flex items-end gap-2">
         <MicButton
           level={micLevel}

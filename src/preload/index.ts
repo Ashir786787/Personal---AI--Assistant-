@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { StreamEvent } from '@shared/chat'
-import type { AshirsBridge } from '@shared/ipc'
+import type { AshirsBridge, VoiceRecording } from '@shared/ipc'
 import { IPC } from '@shared/ipc'
 
 const bridge: AshirsBridge = {
@@ -12,7 +12,8 @@ const bridge: AshirsBridge = {
     const wrapped = (_event: unknown, streamEvent: StreamEvent): void => listener(streamEvent)
     ipcRenderer.on(IPC.chatStream, wrapped)
     return () => ipcRenderer.removeListener(IPC.chatStream, wrapped)
-  }
+  },
+  transcribeVoice: (recording: VoiceRecording) => ipcRenderer.invoke(IPC.voiceTranscribe, recording)
 }
 
 contextBridge.exposeInMainWorld('ashirs', bridge)

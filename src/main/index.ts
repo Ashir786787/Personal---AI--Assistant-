@@ -5,6 +5,7 @@ import { createGeminiProvider } from './llm/gemini'
 import { createGroqProvider } from './llm/groq'
 import { ProviderRouter } from './llm/router'
 import { registerChatIpc } from './ipc/chat-handlers'
+import { registerVoiceIpc } from './ipc/voice-handlers'
 import { log } from './lib/logger'
 
 const CSP = [
@@ -108,6 +109,7 @@ if (!gotLock) {
     const router = new ProviderRouter([createGeminiProvider(), createGroqProvider()], 'gemini')
     const memory = new ConversationMemory()
     registerChatIpc(mainWindow.webContents, router, memory)
+    registerVoiceIpc(mainWindow.webContents)
 
     log('info', 'app', `started (packaged: ${app.isPackaged})`)
 

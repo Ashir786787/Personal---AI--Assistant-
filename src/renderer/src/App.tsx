@@ -3,8 +3,7 @@ import { StatusBar } from './components/status/StatusBar'
 import { MessageList } from './components/chat/MessageList'
 import { ChatInput } from './components/chat/ChatInput'
 import { useChat } from './hooks/useChat'
-import { useAudioLevel } from './hooks/useAudioLevel'
-import { useSpeechRecognition } from './hooks/useSpeechRecognition'
+import { useVoiceRecorder } from './hooks/useVoiceRecorder'
 import { useSpeech } from './hooks/useSpeech'
 
 const TTS_STORAGE_KEY = 'ashirs.tts-enabled'
@@ -12,17 +11,10 @@ const TTS_STORAGE_KEY = 'ashirs.tts-enabled'
 export function App() {
   const { messages, busy, send } = useChat()
   const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem(TTS_STORAGE_KEY) === '1')
-  const [micDenied, setMicDenied] = useState(false)
   const { speak, stop } = useSpeech(ttsEnabled)
 
   const handleTranscript = useCallback((text: string) => send(text), [send])
-  const {
-    listening,
-    unavailableReason,
-    start,
-    stop: stopListening
-  } = useSpeechRecognition(handleTranscript)
-  const level = useAudioLevel(listening)
+  const voice = useVoiceRecorder(handleTranscript)
 
   useEffect(() => {
     const last = messages[messages.length - 1]
@@ -31,25 +23,6 @@ export function App() {
     }
     if (messages.length === 0) stop()
   }, [messages, speak, stop])
-
-  const toggleMic = (): void => {
-    if (listening) {
-      stopListening()
-      return
-    }
-    stop()
-    navigator.mediaDevices
-      .getUserMedia({ audio: true })
-      .then((probe) => {
-        probe.getTracks().forEach((track) => track.stop())
-        setMicDenied(false)
-        start()
-      })
-      .catch(() => {
-        setMicDenied(true)
-        start()
-      })
-  }
 
   const toggleTts = (): void => {
     setTtsEnabled((prev) => {
@@ -60,7 +33,7 @@ export function App() {
     })
   }
 
-  const micState = micDenied ? 'denied' : listening ? 'listening' : 'idle'
+  const micState = voice.error ? 'denied' : voice.recording ? 'listening' : 'idle'
   const lastProvider = [...messages].reverse().find((m) => m.role === 'assistant')?.provider ?? null
 
   return (
@@ -70,11 +43,11 @@ export function App() {
       <ChatInput
         busy={busy}
         ttsEnabled={ttsEnabled}
-        micListening={listening}
-        micLevel={level}
-        voiceUnavailableReason={unavailableReason}
+        micListening={voice.recording}
+        micLevel={voice.level}
+        voiceNotice={voice.error}
         onSend={send}
-        onToggleMic={toggleMic}
+        onToggleMic={voice.toggle}
         onToggleTts={toggleTts}
       />
     </div>
