@@ -1,16 +1,20 @@
 import { ipcMain, type WebContents } from 'electron'
 import { IPC } from '@shared/ipc'
 import type { SendChatRequest, StreamEvent } from '@shared/chat'
+import { TOOL_PROTOCOL_INSTRUCTIONS } from '@shared/tools'
 import { getApiKey } from '../settings/store'
 import type { ConversationMemory } from '../conversation/memory'
 import { SYSTEM_PROMPT } from '../conversation/persona'
 import { ProviderError } from '../llm/errors'
 import type { ChatTurn } from '../llm/provider'
 import type { ProviderRouter } from '../llm/router'
+import type { ToolRegistry } from '../tools/registry'
+import { extractToolAction } from '../tools/parse'
 import { log } from '../lib/logger'
 
 const MAX_INPUT_LENGTH = 8000
 const PROVIDER_TIMEOUT_MS = 45_000
+const MAX_TOOL_HOPS = 3
 
 export class ValidationError extends Error {}
 
@@ -29,7 +33,8 @@ function parseRequest(raw: unknown): SendChatRequest {
 export function registerChatIpc(
   webContents: WebContents,
   router: ProviderRouter,
-  memory: ConversationMemory
+  memory: ConversationMemory,
+  registry: ToolRegistry
 ): void {
   let active: AbortController | null = null
 
@@ -46,11 +51,11 @@ export function registerChatIpc(
 
     const userMessage = memory.append('user', request.text)
     const turns: ChatTurn[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: `${SYSTEM_PROMPT}\n\n${TOOL_PROTOCOL_INSTRUCTIONS}` },
       ...memory.recent().map((m) => ({ role: m.role, content: m.content }) as ChatTurn)
     ]
 
-    void streamResponse(router, memory, turns, controller, emit)
+    void streamResponse(router, memory, registry, turns, controller, emit)
       .catch((err: unknown) => {
         const message =
           err instanceof Error ? err.message : 'Something went wrong on my side. Try again'
@@ -72,13 +77,14 @@ export function registerChatIpc(
 async function streamResponse(
   router: ProviderRouter,
   memory: ConversationMemory,
+  registry: ToolRegistry,
   turns: ChatTurn[],
   controller: AbortController,
   emit: (event: StreamEvent) => void
 ): Promise<void> {
   const attempted = new Set<string>()
 
-  while (true) {
+  for (let hop = 0; ; hop++) {
     const provider = router.pick()
     const apiKey = getApiKey(provider.id)
     if (!apiKey) {
@@ -101,17 +107,9 @@ async function streamResponse(
         full += chunk
         emit({ type: 'delta', text: chunk })
       }
-      if (full.length > 0) memory.append('assistant', full)
-      emit({ type: 'done', provider: provider.id, model: provider.model })
-      log('info', 'chat', `responded via ${provider.id} (${full.length} chars)`)
-      return
     } catch (err) {
       if ((err as Error).name === 'AbortError' || (err as Error).name === 'TimeoutError') {
-        if (full.length > 0) {
-          memory.append('assistant', full)
-          emit({ type: 'done', provider: provider.id, model: provider.model })
-          return
-        }
+        if (full.length > 0) break
         emit({
           type: 'error',
           message: `${provider.id} took too long to answer. Please try sending that again`,
@@ -132,5 +130,39 @@ async function streamResponse(
       }
       throw err
     }
+
+    if (controller.signal.aborted) return
+
+    const action = extractToolAction(full)
+    if (!action || hop >= MAX_TOOL_HOPS) {
+      memory.append('assistant', full)
+      emit({ type: 'done', provider: provider.id, model: provider.model })
+      log('info', 'chat', `responded via ${provider.id} (${full.length} chars)`)
+      return
+    }
+
+    memory.append('assistant', full)
+    emit({
+      type: 'tool',
+      name: action.tool,
+      argsSummary: Object.values(action.args).join(', ')
+    })
+    log('info', 'tool', `${action.tool} ${JSON.stringify(action.args)}`)
+
+    let toolOutcome: string
+    try {
+      toolOutcome = await registry.execute(action)
+    } catch (err) {
+      toolOutcome = `TOOL_ERROR: ${err instanceof Error ? err.message : String(err)}`
+    }
+    memory.append('user', `TOOL_RESULT for "${action.tool}":\n${toolOutcome}`)
+    turns.push({ role: 'assistant', content: full })
+    turns.push({
+      role: 'user',
+      content:
+        hop + 1 > MAX_TOOL_HOPS
+          ? `TOOL_RESULT for "${action.tool}" was received. Stop using tools and answer in prose now.`
+          : `TOOL_RESULT for "${action.tool}":\n${toolOutcome}`
+    })
   }
 }

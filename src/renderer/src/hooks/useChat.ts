@@ -15,6 +15,10 @@ interface StreamState {
   provider: ProviderId | null
 }
 
+function argsSummaryLabel(name: string, summary: string): string {
+  return summary.length > 0 ? `${name} · ${summary}` : name
+}
+
 export function useChat() {
   const [messages, setMessages] = useState<UiMessage[]>([])
   const [busy, setBusy] = useState(false)
@@ -50,6 +54,22 @@ export function useChat() {
           setMessages((prev) =>
             prev.map((m) => (m.id === messageId ? { ...m, content: m.content + event.text } : m))
           )
+          break
+        }
+        case 'tool': {
+          const failedId = stream.current.messageId
+          setMessages((prev) => {
+            const withoutRawJson = failedId !== null ? prev.filter((m) => m.id !== failedId) : prev
+            return [
+              ...withoutRawJson,
+              {
+                id: `tool-${Date.now()}`,
+                role: 'tool',
+                content: argsSummaryLabel(event.name, event.argsSummary)
+              }
+            ]
+          })
+          stream.current = { messageId: null, provider: null }
           break
         }
         case 'done': {

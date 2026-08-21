@@ -40,6 +40,14 @@ export interface ResolvedPath {
   root: string
 }
 
+function rootByName(name: string): string | null {
+  const lowered = name.toLowerCase()
+  return (
+    allowedRoots().find((root) => (root.split(/[\\/]+/).pop() ?? '').toLowerCase() === lowered) ??
+    null
+  )
+}
+
 export function resolveWithin(userInput: string): ResolvedPath {
   const trimmed = userInput.trim()
   if (trimmed.length === 0) throw new PathScopeError('No folder was specified')
@@ -48,15 +56,23 @@ export function resolveWithin(userInput: string): ResolvedPath {
   if (isAbsolute(trimmed)) {
     candidate = resolve(trimmed)
   } else {
-    const guessedRoot = allowedRoots().find((root) =>
-      existsSync(join(root, trimmed.split(sep)[0] ?? trimmed))
-    )
-    if (!guessedRoot) {
-      throw new PathScopeError(
-        'Could not match that folder inside Downloads, Documents, Desktop or Pictures'
-      )
+    const segments = trimmed.split(/[\\/]+/).filter(Boolean)
+    const firstSegment = segments[0] ?? ''
+    const namedRoot = rootByName(firstSegment)
+
+    if (namedRoot && segments.length === 1) {
+      candidate = namedRoot
+    } else if (namedRoot) {
+      candidate = join(namedRoot, ...segments.slice(1))
+    } else {
+      const guessedRoot = allowedRoots().find((root) => existsSync(join(root, firstSegment)))
+      if (!guessedRoot || !firstSegment) {
+        throw new PathScopeError(
+          'Could not match that folder inside Downloads, Documents, Desktop or Pictures'
+        )
+      }
+      candidate = join(guessedRoot, ...segments)
     }
-    candidate = join(guessedRoot, trimmed)
   }
 
   const containingRoot = findContainingRoot(candidate)
