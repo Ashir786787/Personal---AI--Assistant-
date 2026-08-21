@@ -91,6 +91,19 @@ export function useChat() {
       const trimmed = text.trim()
       if (trimmed.length === 0 || busy) return
 
+      if (typeof window.ashirs === 'undefined') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `error-${Date.now()}`,
+            role: 'error',
+            content:
+              "The secure bridge is not available here. Close this browser tab and use the ASHIR's AI desktop window."
+          }
+        ])
+        return
+      }
+
       const localId = `user-${Date.now()}`
       setMessages((prev) => [...prev, { id: localId, role: 'user', content: trimmed }])
       setBusy(true)

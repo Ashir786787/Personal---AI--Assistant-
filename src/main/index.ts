@@ -89,6 +89,8 @@ const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
   app.quit()
 } else {
+  app.enableSandbox()
+
   app.on('second-instance', () => {
     const [win] = BrowserWindow.getAllWindows()
     if (win) {
@@ -98,7 +100,6 @@ if (!gotLock) {
   })
 
   app.whenReady().then(() => {
-    app.enableSandbox()
     Menu.setApplicationMenu(null)
     applySecurityPolicy()
 
