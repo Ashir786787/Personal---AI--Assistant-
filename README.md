@@ -96,12 +96,34 @@ Key decisions:
 | ----- | ------------------------------------------------ | ------- |
 | 0     | Tooling scaffold, security hooks                 | Done    |
 | 1     | Chat + voice assistant                           | Done    |
-| 2     | File & system automation with confirmation gates | Next    |
-| 3     | Browser automation (Playwright)                  | Planned |
-| 4     | System monitoring                                | Planned |
-| 5     | Multi-agent core                                 | Planned |
-| 6     | Agent Town visual (Phaser 3)                     | Planned |
-| 7     | Packaging & hardening                            | Planned |
+| 2     | File & system automation with confirmation gates | Done    |
+| 3     | System controls, settings, packaging, updates    | Done    |
+| 4     | Scheduled routines                               | Done    |
+| 5     | Release automation, code signing                 | Current |
+| 6     | Memory persistence and polish to v1.0            | Planned |
+
+## Releases and auto-updates
+
+1. Bump `version` in `package.json`.
+2. Commit, tag, push:
+
+   ```powershell
+   git tag v0.2.0
+   git push origin main v0.2.0
+   ```
+
+3. GitHub Actions builds the NSIS installer on a clean runner, runs all gates,
+   and publishes the exe plus `latest.yml` to the matching GitHub Release.
+4. Installed apps check that release feed on launch, download silently in the
+   background, and offer "Restart now" when ready.
+
+Code signing is wired but optional: add `CSC_LINK` and `CSC_KEY_PASSWORD`
+secrets to this repository and electron-builder signs every artifact during the
+release build. Without them the installer stays unsigned (SmartScreen warning
+appears once per new version).
+
+Note: the update feed requires the GitHub repository to be public (or a token
+on the client). Decide before v1.0 whether this repo goes public.
 
 ## Safety rules this project follows
 
