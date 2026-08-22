@@ -113,7 +113,7 @@ if (!gotLock) {
     const mainWindow = createMainWindow()
 
     const router = new ProviderRouter([createGeminiProvider(), createGroqProvider()], 'gemini')
-    const memory = new ConversationMemory()
+    const memory = new ConversationMemory(join(app.getPath('userData'), 'memory.json'))
     const registry = ToolRegistry.withDefaults((proposal) => {
       if (!mainWindow.isDestroyed()) mainWindow.webContents.send(IPC.actionProposed, proposal)
     })

@@ -4,7 +4,7 @@ A secure, local-first personal desktop assistant for Windows. Talk to it by voic
 
 Built by M. Ashir Mushtaq.
 
-## Current status: Phase 1 complete
+## Current status: v1.0 — daily-driver ready
 
 - Real-time chat with streaming responses
 - Dual-provider balancing across **Google Gemini** and **Groq** — automatic failover when one provider hits its free limit or has a bad day
@@ -92,15 +92,21 @@ Key decisions:
 
 ## Roadmap
 
-| Phase | Scope                                            | Status  |
-| ----- | ------------------------------------------------ | ------- |
-| 0     | Tooling scaffold, security hooks                 | Done    |
-| 1     | Chat + voice assistant                           | Done    |
-| 2     | File & system automation with confirmation gates | Done    |
-| 3     | System controls, settings, packaging, updates    | Done    |
-| 4     | Scheduled routines                               | Done    |
-| 5     | Release automation, code signing                 | Current |
-| 6     | Memory persistence and polish to v1.0            | Planned |
+| Phase | Scope                                            | Status |
+| ----- | ------------------------------------------------ | ------ |
+| 0     | Tooling scaffold, security hooks                 | Done   |
+| 1     | Chat + voice assistant                           | Done   |
+| 2     | File & system automation with confirmation gates | Done   |
+| 3     | System controls, settings, packaging, updates    | Done   |
+| 4     | Scheduled routines                               | Done   |
+| 5     | Release automation, signing hooks                | Done   |
+| 6     | Conversation persistence — **v1.0**              | Done   |
+
+v1.0 highlights: streaming chat with automatic provider failover, live voice
+typing, spoken replies, sandboxed file search and organization behind an
+approval gate, whitelisted app launching, volume/brightness controls, daily
+tidy routines, in-app encrypted API key settings, a custom installer with
+auto-updates, and conversations that survive restarts.
 
 ## Releases and auto-updates
 
