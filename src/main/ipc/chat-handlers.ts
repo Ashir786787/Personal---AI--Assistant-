@@ -12,6 +12,7 @@ import type { ToolRegistry } from '../tools/registry'
 import { extractToolAction } from '../tools/parse'
 import { getProposal, resolveProposal } from '../tools/proposals'
 import { executeOrganizationPlan } from '../fs/executor'
+import { NUDGE_MESSAGE, shouldNudge } from '../tools/nudge'
 import { log } from '../lib/logger'
 
 const MAX_INPUT_LENGTH = 8000
@@ -57,7 +58,7 @@ export function registerChatIpc(
       ...memory.recent().map((m) => ({ role: m.role, content: m.content }) as ChatTurn)
     ]
 
-    void streamResponse(router, memory, registry, turns, controller, emit)
+    void streamResponse(router, memory, registry, turns, controller, emit, request.text)
       .catch((err: unknown) => {
         const message =
           err instanceof Error ? err.message : 'Something went wrong on my side. Try again'
@@ -111,9 +112,11 @@ async function streamResponse(
   registry: ToolRegistry,
   turns: ChatTurn[],
   controller: AbortController,
-  emit: (event: StreamEvent) => void
+  emit: (event: StreamEvent) => void,
+  userText: string
 ): Promise<void> {
   const attempted = new Set<string>()
+  let nudged = false
 
   for (let hop = 0; ; hop++) {
     const provider = router.pick()
@@ -140,7 +143,14 @@ async function streamResponse(
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError' || (err as Error).name === 'TimeoutError') {
-        if (full.length > 0) break
+        if (full.length > 0) {
+          const notice =
+            '\n\n_(my connection cut off mid-answer — say "continue" if it stops short)_'
+          full += notice
+          emit({ type: 'delta', text: notice })
+          log('warn', 'chat', `${provider.id} timed out mid-stream; kept partial answer`)
+          break
+        }
         emit({
           type: 'error',
           message: `${provider.id} took too long to answer. Please try sending that again`,
@@ -164,8 +174,33 @@ async function streamResponse(
 
     if (controller.signal.aborted) return
 
+    if (full.length === 0) {
+      if (attempted.size < router.count) {
+        log('warn', 'chat', `${provider.id} returned an empty stream, failing over`)
+        continue
+      }
+      emit({
+        type: 'error',
+        message: 'The provider came back with an empty response. Please try again',
+        recoverable: true
+      })
+      return
+    }
+
     const action = extractToolAction(full)
     if (!action || hop >= MAX_TOOL_HOPS) {
+      if (
+        !action &&
+        shouldNudge({ hadAction: false, alreadyNudged: nudged, userText, replyText: full })
+      ) {
+        nudged = true
+        memory.append('assistant', full)
+        turns.push({ role: 'assistant', content: full })
+        turns.push({ role: 'user', content: NUDGE_MESSAGE })
+        log('info', 'chat', 'file question without tool action — nudging model to call a tool')
+        continue
+      }
+
       memory.append('assistant', full)
       emit({ type: 'done', provider: provider.id, model: provider.model })
       log('info', 'chat', `responded via ${provider.id} (${full.length} chars)`)

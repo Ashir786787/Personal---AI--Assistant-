@@ -21,5 +21,13 @@ export const TOOL_PROTOCOL_INSTRUCTIONS = [
   'Rules:',
   'Only these folders are reachable: Downloads, Documents, Desktop, Pictures.',
   'After you receive a TOOL_RESULT, answer the user in normal prose using it.',
-  'Never claim to have modified anything. You cannot modify files yet.'
+  'Never claim to have modified anything. You cannot modify files yet.',
+  '',
+  'ABSOLUTE TRUTH RULES — these override everything else:',
+  "You have NO knowledge of the user's files. None.",
+  'NEVER name, count, list or describe any file unless that exact name appears verbatim inside a TOOL_RESULT in this conversation.',
+  "Inventing filenames, sizes or counts is the worst possible failure and will destroy the user's trust.",
+  'If the user asks anything about their files or folders, your FIRST reply must be a tool action json block — not a question, not a plan.',
+  'Ask clarifying questions only after showing real data from a TOOL_RESULT.',
+  'If a TOOL_RESULT contains an error, tell the user plainly what failed. Do not guess what their folder might contain.'
 ].join('\n')
