@@ -20,9 +20,9 @@ export class ProviderRouter {
     return this.order.filter((id) => (this.cooldownUntil.get(id) ?? 0) <= now)
   }
 
-  pick(now = Date.now()): LlmProvider {
-    const available = this.availableIds(now)
-    if (available.length === 0) {
+  pick(now = Date.now(), exclude: ProviderId[] = []): LlmProvider {
+    const cooling = this.availableIds(now)
+    if (cooling.length === 0) {
       const soonest = Math.min(...this.order.map((id) => this.cooldownUntil.get(id) ?? 0))
       const waitSeconds = Math.max(1, Math.ceil((soonest - now) / 1000))
       throw new ProviderError(
@@ -32,9 +32,16 @@ export class ProviderRouter {
       )
     }
 
-    const leastUsed = [...available].sort(
-      (a, b) => this.usageCount(a, now) - this.usageCount(b, now)
-    )
+    const usable = cooling.filter((id) => !exclude.includes(id))
+    if (usable.length === 0) {
+      throw new ProviderError(
+        'gemini',
+        'Every provider failed for that request. Please try again in a moment',
+        { recoverable: false }
+      )
+    }
+
+    const leastUsed = [...usable].sort((a, b) => this.usageCount(a, now) - this.usageCount(b, now))
     const chosen = leastUsed[0] as ProviderId
     this.recordUsage(chosen, now)
     return this.providers.get(chosen)!

@@ -1,6 +1,7 @@
 import { ipcMain, type WebContents } from 'electron'
 import { IPC } from '@shared/ipc'
 import type { SendChatRequest, StreamEvent } from '@shared/chat'
+import type { ProviderId } from '@shared/providers'
 import { TOOL_PROTOCOL_INSTRUCTIONS } from '@shared/tools'
 import { getApiKey } from '../settings/store'
 import type { ConversationMemory } from '../conversation/memory'
@@ -17,7 +18,11 @@ import { log } from '../lib/logger'
 
 const MAX_INPUT_LENGTH = 8000
 const PROVIDER_TIMEOUT_MS = 45_000
-const MAX_TOOL_HOPS = 3
+const MAX_TOOL_HOPS = 6
+
+const CUTOFF_MARKER = '[my previous answer was cut off mid-sentence]'
+const BUDGET_LINE =
+  'I\'ve used my step budget for this request and stopped safely. Say "continue" and I\'ll pick up where I left off'
 
 export class ValidationError extends Error {}
 
@@ -116,10 +121,11 @@ async function streamResponse(
   userText: string
 ): Promise<void> {
   const attempted = new Set<string>()
+  const failed = new Set<ProviderId>()
   let nudged = false
 
   for (let hop = 0; ; hop++) {
-    const provider = router.pick()
+    const provider = failed.size > 0 ? router.pick(Date.now(), [...failed]) : router.pick()
     const apiKey = getApiKey(provider.id)
     if (!apiKey) {
       emit({
@@ -149,7 +155,8 @@ async function streamResponse(
           full += notice
           emit({ type: 'delta', text: notice })
           log('warn', 'chat', `${provider.id} timed out mid-stream; kept partial answer`)
-          break
+          memory.append('assistant', `${full} ${CUTOFF_MARKER}`)
+          return
         }
         emit({
           type: 'error',
@@ -165,10 +172,11 @@ async function streamResponse(
 
       if (canFailOver) {
         if (err.status === 429) router.markRateLimited(err.provider)
+        failed.add(err.provider)
         log(
           'warn',
           'chat',
-          `${err.provider} failed ${full.length > 0 ? `mid-stream (${full.length} chars) ` : ''}(${err.status ?? 'network'}), failing over`
+          `${err.provider} failed ${full.length > 0 ? `mid-stream (${full.length} chars) ` : ''}(${err.status ?? 'network'}), switching providers`
         )
         continue
       }
@@ -191,11 +199,9 @@ async function streamResponse(
     }
 
     const action = extractToolAction(full)
-    if (!action || hop >= MAX_TOOL_HOPS) {
-      if (
-        !action &&
-        shouldNudge({ hadAction: false, alreadyNudged: nudged, userText, replyText: full })
-      ) {
+
+    if (!action) {
+      if (shouldNudge({ hadAction: false, alreadyNudged: nudged, userText, replyText: full })) {
         nudged = true
         memory.append('assistant', full)
         turns.push({ role: 'assistant', content: full })
@@ -207,6 +213,14 @@ async function streamResponse(
       memory.append('assistant', full)
       emit({ type: 'done', provider: provider.id, model: provider.model })
       log('info', 'chat', `responded via ${provider.id} (${full.length} chars)`)
+      return
+    }
+
+    if (hop >= MAX_TOOL_HOPS) {
+      memory.append('assistant', BUDGET_LINE)
+      emit({ type: 'delta', text: `\n\n${BUDGET_LINE}` })
+      emit({ type: 'done', provider: provider.id, model: provider.model })
+      log('warn', 'chat', `tool step budget (${MAX_TOOL_HOPS}) reached; stopped safely`)
       return
     }
 

@@ -20,6 +20,35 @@ describe('ProviderRouter', () => {
     expect(router.pick().id).toBe('gemini')
   })
 
+  it('never returns an excluded provider while another is available', () => {
+    const router = new ProviderRouter([fakeProvider('gemini'), fakeProvider('groq')], 'gemini')
+    for (let i = 0; i < 10; i++) {
+      expect(router.pick(1000 + i, ['gemini']).id).toBe('groq')
+    }
+  })
+
+  it('throws unrecoverable error when every non-excluded provider is gone', () => {
+    const router = new ProviderRouter([fakeProvider('gemini'), fakeProvider('groq')], 'gemini')
+    try {
+      router.pick(Date.now(), ['gemini', 'groq'])
+      expect.unreachable('should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ProviderError)
+      expect((err as ProviderError).recoverable).toBe(false)
+    }
+  })
+
+  it('throws unrecoverable error when exclusions exhaust every provider', () => {
+    const router = new ProviderRouter([fakeProvider('gemini'), fakeProvider('groq')], 'gemini')
+    try {
+      router.pick(Date.now(), ['gemini', 'groq'])
+      expect.unreachable('should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ProviderError)
+      expect((err as ProviderError).recoverable).toBe(false)
+    }
+  })
+
   it('balances load across providers within the usage window', () => {
     const router = new ProviderRouter([fakeProvider('gemini'), fakeProvider('groq')], 'gemini')
 
