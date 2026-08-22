@@ -112,9 +112,10 @@ export function createOrganizeFolderTool(
       }
 
       const proposal = createProposal({
+        kind: 'organize',
         sourceDir: absolutePath,
         sourceName,
-        moves: plan.moves
+        payload: { moves: plan.moves }
       })
 
       const preview = plan.moves.slice(0, 10).map((m) => `${m.fileName} → ${m.toSubfolder}`)

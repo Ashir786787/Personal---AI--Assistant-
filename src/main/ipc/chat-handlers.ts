@@ -11,8 +11,11 @@ import type { ChatTurn } from '../llm/provider'
 import type { ProviderRouter } from '../llm/router'
 import type { ToolRegistry } from '../tools/registry'
 import { extractToolAction } from '../tools/parse'
-import { getProposal, resolveProposal } from '../tools/proposals'
+import { getProposal, resolveProposal, type PendingProposal } from '../tools/proposals'
 import { executeOrganizationPlan } from '../fs/executor'
+import { setVolume, toggleMute } from '../system/volume'
+import { setBrightness } from '../system/brightness'
+import { launchApp } from '../system/apps'
 import { NUDGE_MESSAGE, shouldNudge } from '../tools/nudge'
 import { log } from '../lib/logger'
 
@@ -81,7 +84,7 @@ export function registerChatIpc(
     active?.abort()
   })
 
-  ipcMain.handle(IPC.actionDecide, (_event, raw: unknown) => {
+  ipcMain.handle(IPC.actionDecide, async (_event, raw: unknown) => {
     const id =
       typeof (raw as { id?: unknown })?.['id'] === 'string' ? (raw as { id: string }).id : ''
     const approved = Boolean((raw as { approved?: unknown })?.approved)
@@ -91,24 +94,74 @@ export function registerChatIpc(
     resolveProposal(id)
     if (!approved) {
       log('info', 'action', `proposal ${id} cancelled by user`)
-      return 'Cancelled. Nothing was moved'
+      return 'Cancelled. Nothing was changed'
     }
 
-    log('info', 'action', `proposal ${id} approved — executing ${proposal.moves.length} moves`)
-    const result = executeOrganizationPlan(proposal.sourceDir, proposal.moves)
-
-    const parts = [`✓ Moved ${result.moved} file${result.moved === 1 ? '' : 's'}`]
-    if (result.failed.length > 0) {
-      parts.push(
-        `${result.failed.length} could not move: ${result.failed.map((f) => f.fileName).join(', ')}`
-      )
-    }
-    const summary = `${parts.join('. ')} in "${proposal.sourceName}"`
-
-    memory.append('assistant', summary)
-    emit({ type: 'tool', name: 'organize_applied', argsSummary: summary })
-    return summary
+    log('info', 'action', `proposal ${id} approved — kind=${proposal.kind}`)
+    return executeApproved(proposal, (summary) => {
+      memory.append('assistant', summary)
+      emit({ type: 'tool', name: 'action_applied', argsSummary: summary })
+    })
   })
+}
+
+async function executeApproved(
+  proposal: PendingProposal,
+  announce: (summary: string) => void
+): Promise<string> {
+  try {
+    if (proposal.kind === 'organize') {
+      const moves = proposal.payload.moves ?? []
+      const result = executeOrganizationPlan(proposal.sourceDir ?? '', moves)
+      const parts = [`✓ Moved ${result.moved} file${result.moved === 1 ? '' : 's'}`]
+      if (result.failed.length > 0) {
+        parts.push(
+          `${result.failed.length} could not move: ${result.failed.map((f) => f.fileName).join(', ')}`
+        )
+      }
+      const summary = `${parts.join('. ')} in "${proposal.sourceName}"`
+      announce(summary)
+      return summary
+    }
+
+    if (proposal.kind === 'volume') {
+      const level = proposal.payload.level ?? 0
+      await setVolume(level)
+      const summary = `✓ Volume set to about ${level}%`
+      announce(summary)
+      return summary
+    }
+
+    if (proposal.kind === 'mute') {
+      await toggleMute()
+      const summary = '✓ Mute toggled'
+      announce(summary)
+      return summary
+    }
+
+    if (proposal.kind === 'brightness') {
+      const level = proposal.payload.level ?? 0
+      await setBrightness(level)
+      const summary = `✓ Brightness set to ${level}%`
+      announce(summary)
+      return summary
+    }
+
+    if (proposal.kind === 'launch') {
+      const app = proposal.payload.app ?? ''
+      const result = await launchApp(app)
+      const summary = `✓ ${result}`
+      announce(summary)
+      return summary
+    }
+
+    return 'Unknown proposal type — nothing was done'
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'The action failed'
+    const summary = `✗ ${message}`
+    announce(summary)
+    return summary
+  }
 }
 
 async function streamResponse(

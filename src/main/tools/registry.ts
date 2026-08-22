@@ -1,6 +1,7 @@
 import type { ToolAction, ToolDefinition } from '@shared/tools'
 import type { ActionProposal } from '@shared/ipc'
 import { readOnlyFileTools } from './file-tools'
+import { createSystemTools } from './system-tools'
 
 export class ToolExecutionError extends Error {}
 
@@ -36,7 +37,9 @@ export class ToolRegistry {
 
   static withDefaults(emitProposal: (proposal: ActionProposal) => void): ToolRegistry {
     const registry = new ToolRegistry()
-    for (const tool of readOnlyFileTools(emitProposal)) registry.register(tool)
+    for (const tool of [...readOnlyFileTools(emitProposal), ...createSystemTools(emitProposal)]) {
+      registry.register(tool)
+    }
     return registry
   }
 }
