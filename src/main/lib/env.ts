@@ -4,7 +4,11 @@ import { join, resolve } from 'path'
 import { app } from 'electron'
 
 function loadEnv(): void {
-  const candidates = [resolve(process.cwd(), '.env'), join(app.getAppPath(), '.env')]
+  const candidates = [
+    resolve(process.cwd(), '.env'),
+    join(app.getAppPath(), '.env'),
+    join(app.getPath('userData'), '.env')
+  ]
   for (const path of candidates) {
     if (existsSync(path)) {
       config({ path })
