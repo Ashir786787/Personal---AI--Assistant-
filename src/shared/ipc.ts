@@ -7,7 +7,9 @@ export const IPC = {
   statusSnapshot: 'status:snapshot',
   voiceTranscribe: 'voice:transcribe',
   actionProposed: 'action:proposed',
-  actionDecide: 'action:decide'
+  actionDecide: 'action:decide',
+  settingsGet: 'settings:get',
+  settingsSet: 'settings:set'
 } as const
 
 export interface VoiceRecording {
@@ -22,6 +24,11 @@ export interface ActionProposal {
   totalMoves: number
 }
 
+export interface ProviderKeyStatus {
+  gemini: boolean
+  groq: boolean
+}
+
 export interface AshirsBridge {
   sendChat(request: SendChatRequest): Promise<SendChatResponse>
   cancelChat(): void
@@ -29,4 +36,6 @@ export interface AshirsBridge {
   transcribeVoice(recording: VoiceRecording): Promise<string>
   onProposal(listener: (proposal: ActionProposal) => void): () => void
   decideProposal(id: string, approved: boolean): Promise<string>
+  getKeyStatus(): Promise<ProviderKeyStatus>
+  setProviderKey(provider: 'gemini' | 'groq', key: string): Promise<void>
 }

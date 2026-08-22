@@ -4,9 +4,10 @@ interface StatusBarProps {
   micState: 'idle' | 'listening' | 'denied'
   lastProvider: ProviderId | null
   busy: boolean
+  onOpenSettings: () => void
 }
 
-export function StatusBar({ micState, lastProvider, busy }: StatusBarProps) {
+export function StatusBar({ micState, lastProvider, busy, onOpenSettings }: StatusBarProps) {
   const micLabel = micState === 'listening' ? 'LIVE' : micState === 'denied' ? 'DENIED' : 'READY'
   const micColor =
     micState === 'listening'
@@ -33,6 +34,14 @@ export function StatusBar({ micState, lastProvider, busy }: StatusBarProps) {
         </span>
         <span>Agents 0</span>
         <span className={busy ? 'text-accent' : ''}>{linkLabel}</span>
+        <button
+          className="gear-btn"
+          title="Settings"
+          aria-label="Settings"
+          onClick={onOpenSettings}
+        >
+          ⚙
+        </button>
       </div>
     </header>
   )

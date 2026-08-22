@@ -7,6 +7,7 @@ import { createGroqProvider } from './llm/groq'
 import { ProviderRouter } from './llm/router'
 import { registerChatIpc } from './ipc/chat-handlers'
 import { registerVoiceIpc } from './ipc/voice-handlers'
+import { registerSettingsIpc } from './ipc/settings-handlers'
 import { ToolRegistry } from './tools/registry'
 import { log } from './lib/logger'
 
@@ -115,6 +116,7 @@ if (!gotLock) {
     })
     registerChatIpc(mainWindow.webContents, router, memory, registry)
     registerVoiceIpc(mainWindow.webContents)
+    registerSettingsIpc()
 
     log('info', 'app', `started (packaged: ${app.isPackaged})`)
 

@@ -3,6 +3,7 @@ import { StatusBar } from './components/status/StatusBar'
 import { MessageList } from './components/chat/MessageList'
 import { ChatInput } from './components/chat/ChatInput'
 import { ConfirmationModal } from './components/confirm/ConfirmationModal'
+import { SettingsPanel } from './components/settings/SettingsPanel'
 import { useChat } from './hooks/useChat'
 import { useVoiceRecorder } from './hooks/useVoiceRecorder'
 import { useSpeech } from './hooks/useSpeech'
@@ -16,6 +17,7 @@ export function App() {
   const [draft, setDraft] = useState('')
   const { speak, stop } = useSpeech(ttsEnabled)
   const { proposal, busy: deciding, outcome, decide, dismissOutcome } = useProposals()
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const handleTranscript = useCallback((text: string): void => {
     setDraft(text)
@@ -47,7 +49,12 @@ export function App() {
 
   return (
     <div className="flex h-full flex-col bg-base">
-      <StatusBar micState={micState} lastProvider={lastProvider} busy={busy} />
+      <StatusBar
+        micState={micState}
+        lastProvider={lastProvider}
+        busy={busy}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
       <MessageList messages={messages} />
       <ChatInput
         value={draft}
@@ -72,6 +79,7 @@ export function App() {
       {proposal && (
         <ConfirmationModal proposal={proposal} busy={deciding} onDecide={(ok) => void decide(ok)} />
       )}
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
     </div>
   )
 }

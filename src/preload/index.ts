@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { StreamEvent } from '@shared/chat'
-import type { ActionProposal, AshirsBridge, VoiceRecording } from '@shared/ipc'
+import type { ActionProposal, AshirsBridge, ProviderKeyStatus, VoiceRecording } from '@shared/ipc'
 import { IPC } from '@shared/ipc'
 
 const bridge: AshirsBridge = {
@@ -21,7 +21,10 @@ const bridge: AshirsBridge = {
     return () => ipcRenderer.removeListener(IPC.actionProposed, wrapped)
   },
   decideProposal: (id: string, approved: boolean) =>
-    ipcRenderer.invoke(IPC.actionDecide, { id, approved }) as Promise<string>
+    ipcRenderer.invoke(IPC.actionDecide, { id, approved }) as Promise<string>,
+  getKeyStatus: () => ipcRenderer.invoke(IPC.settingsGet) as Promise<ProviderKeyStatus>,
+  setProviderKey: (provider: 'gemini' | 'groq', key: string) =>
+    ipcRenderer.invoke(IPC.settingsSet, { provider, key }) as Promise<void>
 }
 
 contextBridge.exposeInMainWorld('ashirs', bridge)
