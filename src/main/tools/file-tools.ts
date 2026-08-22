@@ -1,4 +1,5 @@
 import { listDirectory, summarizeByType, type FileEntry } from '../fs/listing'
+import { searchWithin } from '../fs/search'
 import { allowedRoots, resolveWithin } from '../fs/scope'
 import { planOrganization } from './organizer'
 import { createProposal } from './proposals'
@@ -138,6 +139,33 @@ export function createOrganizeFolderTool(
   }
 }
 
+const searchFilesTool: ToolDefinition = {
+  name: 'search_files',
+  description:
+    'Search a folder and its subfolders for files by name. Use when the user asks where something is',
+  mutating: false,
+
+  async execute(args) {
+    const raw = typeof args['path'] === 'string' ? args['path'] : ''
+    const query = typeof args['query'] === 'string' ? args['query'] : ''
+    if (query.trim().length === 0) {
+      return 'SEARCH_ERROR: A search needs the query argument, e.g. {"query": "vanguard"}'
+    }
+
+    const hits = searchWithin(raw, query)
+    if (hits.length === 0) {
+      return `No matches for "${query}" inside ${raw} (searched subfolders too)`
+    }
+
+    const lines = hits
+      .slice(0, 15)
+      .map((hit) => `- ${hit.fileName}${hit.isDirectory ? '/' : ''} · ${hit.relativePath}`)
+    const overflow = hits.length > 15 ? `\n…and ${hits.length - 15} more matches` : ''
+
+    return `Found ${hits.length} match${hits.length === 1 ? '' : 'es'} for "${query}" in ${raw}:\n${lines.join('\n')}${overflow}`
+  }
+}
+
 export function readOnlyFileTools(
   emitProposal: (proposal: ActionProposal) => void
 ): ToolDefinition[] {
@@ -145,6 +173,7 @@ export function readOnlyFileTools(
     listFolderTool,
     folderSummaryTool,
     sandboxOverviewTool,
+    searchFilesTool,
     createOrganizeFolderTool(emitProposal)
   ]
 }

@@ -18,6 +18,8 @@ export const TOOL_PROTOCOL_INSTRUCTIONS = [
   '- list_folder {"path": "Downloads"} — see what is inside a folder',
   '- folder_summary {"path": "Downloads"} — grouped overview by file type',
   '- sandbox_overview {} — how many items sit in each accessible folder',
+  '- search_files {"path": "Downloads", "query": "vanguard"} — find files by name, including inside subfolders',
+  '- organize_folder {"path": "Downloads"} — propose organizing into typed subfolders; user approves before anything moves',
   'Rules:',
   'Only these folders are reachable: Downloads, Documents, Desktop, Pictures.',
   'After you receive a TOOL_RESULT, answer the user in normal prose using it.',
