@@ -161,12 +161,15 @@ async function streamResponse(
       }
 
       const isProviderError = err instanceof ProviderError
-      const canFailOver =
-        isProviderError && err.recoverable && full.length === 0 && attempted.size < router.count
+      const canFailOver = isProviderError && err.recoverable && attempted.size < router.count
 
       if (canFailOver) {
         if (err.status === 429) router.markRateLimited(err.provider)
-        log('warn', 'chat', `${err.provider} failed (${err.status ?? 'network'}), failing over`)
+        log(
+          'warn',
+          'chat',
+          `${err.provider} failed ${full.length > 0 ? `mid-stream (${full.length} chars) ` : ''}(${err.status ?? 'network'}), failing over`
+        )
         continue
       }
       throw err
