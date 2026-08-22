@@ -9,6 +9,7 @@ import { registerChatIpc } from './ipc/chat-handlers'
 import { registerVoiceIpc } from './ipc/voice-handlers'
 import { registerSettingsIpc } from './ipc/settings-handlers'
 import { ToolRegistry } from './tools/registry'
+import { initAutoUpdater } from './updater'
 import { log } from './lib/logger'
 
 const CSP = [
@@ -117,6 +118,7 @@ if (!gotLock) {
     registerChatIpc(mainWindow.webContents, router, memory, registry)
     registerVoiceIpc(mainWindow.webContents)
     registerSettingsIpc()
+    initAutoUpdater()
 
     log('info', 'app', `started (packaged: ${app.isPackaged})`)
 
