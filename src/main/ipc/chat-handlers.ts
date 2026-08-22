@@ -16,6 +16,7 @@ import { executeOrganizationPlan } from '../fs/executor'
 import { setVolume, toggleMute } from '../system/volume'
 import { setBrightness } from '../system/brightness'
 import { launchApp } from '../system/apps'
+import { addRoutine } from '../routines/store'
 import { NUDGE_MESSAGE, shouldNudge } from '../tools/nudge'
 import { log } from '../lib/logger'
 
@@ -151,6 +152,15 @@ async function executeApproved(
       const app = proposal.payload.app ?? ''
       const result = await launchApp(app)
       const summary = `✓ ${result}`
+      announce(summary)
+      return summary
+    }
+
+    if (proposal.kind === 'schedule') {
+      const [folderName, timeHHMM, name] = (proposal.payload.app ?? '').split('|')
+      if (!folderName || !timeHHMM) return '✗ Routine data was incomplete'
+      addRoutine(name ?? `Nightly tidy of ${folderName}`, folderName, timeHHMM)
+      const summary = `✓ Scheduled: ${name ?? folderName} runs daily at ${timeHHMM}`
       announce(summary)
       return summary
     }

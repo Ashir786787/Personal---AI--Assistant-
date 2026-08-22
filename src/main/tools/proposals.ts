@@ -1,6 +1,6 @@
 import type { PlannedMove } from './organizer'
 
-export type ProposalKind = 'organize' | 'volume' | 'brightness' | 'launch' | 'mute'
+export type ProposalKind = 'organize' | 'volume' | 'brightness' | 'launch' | 'mute' | 'schedule'
 
 export interface ProposalPayload {
   level?: number

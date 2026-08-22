@@ -10,6 +10,8 @@ import { registerVoiceIpc } from './ipc/voice-handlers'
 import { registerSettingsIpc } from './ipc/settings-handlers'
 import { ToolRegistry } from './tools/registry'
 import { initAutoUpdater } from './updater'
+import { startScheduler } from './routines/scheduler'
+import type { StreamEvent } from '@shared/chat'
 import { log } from './lib/logger'
 
 const CSP = [
@@ -119,6 +121,17 @@ if (!gotLock) {
     registerVoiceIpc(mainWindow.webContents)
     registerSettingsIpc()
     initAutoUpdater()
+    startScheduler((summaries) => {
+      for (const summary of summaries) {
+        if (!mainWindow.isDestroyed()) {
+          mainWindow.webContents.send(IPC.chatStream, {
+            type: 'tool',
+            name: 'routine',
+            argsSummary: summary
+          } satisfies StreamEvent)
+        }
+      }
+    })
 
     log('info', 'app', `started (packaged: ${app.isPackaged})`)
 
