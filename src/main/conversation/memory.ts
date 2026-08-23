@@ -4,7 +4,13 @@ import type { ChatMessage, ChatRole } from '@shared/chat'
 
 export const MAX_CONTEXT_MESSAGES = 30
 export const MAX_PERSISTED_MESSAGES = 200
+export const MEMORY_FORMAT_VERSION = 2
 const VALID_ROLES: ChatRole[] = ['user', 'assistant', 'tool']
+
+interface PersistedMemory {
+  version: number
+  messages: ChatMessage[]
+}
 
 export class ConversationMemory {
   private messages: ChatMessage[] = []
@@ -63,8 +69,16 @@ export class ConversationMemory {
     try {
       if (!existsSync(this.persistPath)) return
       const parsed = JSON.parse(readFileSync(this.persistPath, 'utf8')) as unknown
-      if (!Array.isArray(parsed)) return
-      this.hydrate(parsed as ChatMessage[])
+      if (
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        'version' in parsed &&
+        (parsed as PersistedMemory).version === MEMORY_FORMAT_VERSION &&
+        Array.isArray((parsed as PersistedMemory).messages)
+      ) {
+        this.hydrate((parsed as PersistedMemory).messages)
+      }
+      // anything else (old-format or corrupt) is discarded — fresh start
     } catch {
       // corrupt memory file starts fresh rather than blocking the app
     }
@@ -74,7 +88,8 @@ export class ConversationMemory {
     if (!this.persistPath) return
     try {
       mkdirSync(dirname(this.persistPath), { recursive: true })
-      writeFileSync(this.persistPath, JSON.stringify(this.messages, null, 2))
+      const payload: PersistedMemory = { version: MEMORY_FORMAT_VERSION, messages: this.messages }
+      writeFileSync(this.persistPath, JSON.stringify(payload, null, 2))
     } catch {
       // best effort; conversation continues in RAM
     }

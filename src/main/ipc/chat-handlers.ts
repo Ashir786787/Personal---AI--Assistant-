@@ -85,6 +85,15 @@ export function registerChatIpc(
     active?.abort()
   })
 
+  ipcMain.handle(IPC.chatClear, () => {
+    if (active) active.abort()
+    active = null
+    memory.clear()
+    emit({ type: 'reset' })
+    log('info', 'chat', 'conversation memory cleared by user')
+    return true
+  })
+
   const ACTION_REPORT_PREFIX = '[SYSTEM ACTION REPORT]'
 
   function describeProposal(proposal: PendingProposal): string {

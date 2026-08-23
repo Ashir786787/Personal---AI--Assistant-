@@ -83,6 +83,12 @@ export function useChat() {
           setBusy(false)
           break
         }
+        case 'reset': {
+          stream.current = { messageId: null, provider: null }
+          setMessages([])
+          setBusy(false)
+          break
+        }
         case 'error': {
           if (stream.current.messageId) {
             const failedId = stream.current.messageId

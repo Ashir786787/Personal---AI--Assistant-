@@ -8,6 +8,7 @@ const bridge: AshirsBridge = {
   cancelChat: () => {
     ipcRenderer.send(IPC.chatCancel)
   },
+  clearChat: () => ipcRenderer.invoke(IPC.chatClear) as Promise<void>,
   onStreamEvent: (listener) => {
     const wrapped = (_event: unknown, streamEvent: StreamEvent): void => listener(streamEvent)
     ipcRenderer.on(IPC.chatStream, wrapped)

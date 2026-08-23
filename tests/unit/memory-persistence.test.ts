@@ -39,9 +39,27 @@ describe('conversation memory persistence', () => {
     for (let i = 0; i < MAX_PERSISTED_MESSAGES + 25; i++) {
       memory.append('user', `message ${i}`)
     }
-    const raw = JSON.parse(readFileSync(file, 'utf8')) as Array<{ content: string }>
-    expect(raw).toHaveLength(MAX_PERSISTED_MESSAGES)
-    expect(raw[raw.length - 1]!.content).toBe(`message ${MAX_PERSISTED_MESSAGES + 24}`)
+    const raw = JSON.parse(readFileSync(file, 'utf8')) as { messages: Array<{ content: string }> }
+    expect(raw.messages).toHaveLength(MAX_PERSISTED_MESSAGES)
+    expect(raw.messages[raw.messages.length - 1]!.content).toBe(
+      `message ${MAX_PERSISTED_MESSAGES + 24}`
+    )
+  })
+
+  it('discards history written in an older format version', () => {
+    const file = join(dir, 'old-version.json')
+    writeFileSync(
+      file,
+      JSON.stringify([
+        {
+          id: 'msg-1',
+          role: 'assistant',
+          content: 'A confirmation dialog is still waiting for you to click Allow',
+          createdAt: 1
+        }
+      ])
+    )
+    expect(new ConversationMemory(file).size).toBe(0)
   })
 
   it('drops corrupt or invalid history instead of failing', () => {

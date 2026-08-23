@@ -3,6 +3,7 @@ import type { SendChatRequest, SendChatResponse, StreamEvent } from './chat'
 export const IPC = {
   chatSend: 'chat:send',
   chatCancel: 'chat:cancel',
+  chatClear: 'chat:clear',
   chatStream: 'chat:stream',
   statusSnapshot: 'status:snapshot',
   voiceTranscribe: 'voice:transcribe',
@@ -32,6 +33,7 @@ export interface ProviderKeyStatus {
 export interface AshirsBridge {
   sendChat(request: SendChatRequest): Promise<SendChatResponse>
   cancelChat(): void
+  clearChat(): Promise<void>
   onStreamEvent(listener: (event: StreamEvent) => void): () => void
   transcribeVoice(recording: VoiceRecording): Promise<string>
   onProposal(listener: (proposal: ActionProposal) => void): () => void

@@ -273,6 +273,9 @@
   align-items: center;
   gap: 12px;
 }
+.settings-row-top {
+  align-items: flex-start;
+}
 .settings-provider {
   width: 92px;
   flex-shrink: 0;

@@ -31,6 +31,8 @@ export const TOOL_PROTOCOL_INSTRUCTIONS = [
   'Rules:',
   'Only these folders are reachable: Downloads, Documents, Desktop, Pictures.',
   'When the user asks to open, visit or search a website, use launch_app with app Microsoft Edge or Google Chrome and the url argument — one action covers the whole request.',
+  'Never claim a confirmation dialog is open, waiting, or was shown unless the immediately preceding TOOL_RESULT says one was shown.',
+  'Old failures in this conversation history came from an older version and are obsolete — current tools work. For any request to open, launch, browse or search the web, reply with the launch_app action immediately instead of describing steps.',
   'A [SYSTEM ACTION REPORT] message is ground truth about what really happened after approval. Trust it over any assumption.',
   'After you receive a TOOL_RESULT, answer the user in normal prose using it.',
   'Never claim to have modified anything. You cannot modify files yet.',

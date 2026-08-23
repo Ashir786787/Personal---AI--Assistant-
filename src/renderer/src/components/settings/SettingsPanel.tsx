@@ -16,6 +16,19 @@ export function SettingsPanel({ onClose, theme, onSetTheme }: Props): JSX.Elemen
   const [groqKey, setGroqKey] = useState('')
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [clearing, setClearing] = useState(false)
+
+  const doClear = async (really: boolean): Promise<void> => {
+    if (!really) return
+    setClearing(true)
+    try {
+      await window.ashirs.clearChat()
+      setConfirmClear(false)
+    } finally {
+      setClearing(false)
+    }
+  }
 
   useEffect(() => {
     void window.ashirs.getKeyStatus().then(setStatus)
@@ -124,6 +137,37 @@ export function SettingsPanel({ onClose, theme, onSetTheme }: Props): JSX.Elemen
 
           {saveState === 'saved' && <p className="settings-ok">Saved — encrypted on disk</p>}
           {error && <p className="settings-err">{error}</p>}
+
+          <div className="settings-row settings-row-top">
+            <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+            <div className="settings-provider">
+              <strong>Conversation</strong>
+              <span>Wipes chat history from this machine</span>
+            </div>
+            {confirmClear ? (
+              <div className="flex flex-1 items-center gap-2">
+                <span className="text-xs text-warning">Erase all memory?</span>
+                <button
+                  className="btn-cancel btn-small"
+                  disabled={clearing}
+                  onClick={() => void doClear(true)}
+                >
+                  {clearing ? 'Erasing…' : 'Yes, erase'}
+                </button>
+                <button
+                  className="btn-cancel btn-small"
+                  disabled={clearing}
+                  onClick={() => setConfirmClear(false)}
+                >
+                  Keep
+                </button>
+              </div>
+            ) : (
+              <button className="btn-cancel btn-small" onClick={() => setConfirmClear(true)}>
+                Clear conversation
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="confirm-actions">
