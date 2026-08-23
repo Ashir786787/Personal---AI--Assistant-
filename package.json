@@ -34,7 +34,8 @@
     "publish": {
       "provider": "github",
       "owner": "Ashir786787",
-      "repo": "Personal---AI--Assistant-"
+      "repo": "Personal---AI--Assistant-",
+      "releaseType": "release"
     },
     "win": {
       "target": [
