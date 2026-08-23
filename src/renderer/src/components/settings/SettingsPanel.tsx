@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
 import type { ProviderKeyStatus } from '@shared/ipc'
+import { THEME_ACCENT, THEME_IDS, THEME_LABEL, type ThemeId } from '../../theme'
 
 interface Props {
   onClose: () => void
+  theme: ThemeId
+  onSetTheme: (theme: ThemeId) => void
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
-export function SettingsPanel({ onClose }: Props): JSX.Element {
+export function SettingsPanel({ onClose, theme, onSetTheme }: Props): JSX.Element {
   const [status, setStatus] = useState<ProviderKeyStatus>({ gemini: false, groq: false })
   const [geminiKey, setGeminiKey] = useState('')
   const [groqKey, setGroqKey] = useState('')
@@ -54,6 +57,29 @@ export function SettingsPanel({ onClose }: Props): JSX.Element {
         </div>
 
         <div className="settings-body">
+          <div className="settings-row">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            <div className="settings-provider">
+              <strong>Theme</strong>
+              <span>Recolors the whole interface</span>
+            </div>
+            <div className="flex flex-1 gap-2">
+              {THEME_IDS.map((id) => (
+                <button
+                  key={id}
+                  className={`theme-pill ${theme === id ? 'theme-pill-active' : ''}`}
+                  onClick={() => onSetTheme(id)}
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: THEME_ACCENT[id] }}
+                  />
+                  {THEME_LABEL[id]}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="settings-row">
             <span className={`h-1.5 w-1.5 rounded-full ${dot(status.gemini)}`} />
             <div className="settings-provider">

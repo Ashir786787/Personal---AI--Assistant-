@@ -1,13 +1,23 @@
 import type { ProviderId } from '@shared/providers'
+import { THEME_ACCENT, type ThemeId } from '../../theme'
 
 interface StatusBarProps {
   micState: 'idle' | 'listening' | 'denied'
   lastProvider: ProviderId | null
   busy: boolean
+  theme: ThemeId
+  onCycleTheme: () => void
   onOpenSettings: () => void
 }
 
-export function StatusBar({ micState, lastProvider, busy, onOpenSettings }: StatusBarProps) {
+export function StatusBar({
+  micState,
+  lastProvider,
+  busy,
+  theme,
+  onCycleTheme,
+  onOpenSettings
+}: StatusBarProps) {
   const micLabel = micState === 'listening' ? 'LIVE' : micState === 'denied' ? 'DENIED' : 'READY'
   const micColor =
     micState === 'listening'
@@ -34,6 +44,14 @@ export function StatusBar({ micState, lastProvider, busy, onOpenSettings }: Stat
         </span>
         <span>Agents 0</span>
         <span className={busy ? 'text-accent' : ''}>{linkLabel}</span>
+        <button
+          className="theme-pill"
+          title={`Theme: ${theme} — click to switch`}
+          aria-label="Switch theme"
+          onClick={onCycleTheme}
+        >
+          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: THEME_ACCENT[theme] }} />
+        </button>
         <button
           className="gear-btn"
           title="Settings"
