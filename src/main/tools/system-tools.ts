@@ -1,7 +1,7 @@
 import type { ToolDefinition } from '@shared/tools'
 import type { ActionProposal } from '@shared/ipc'
 import { createProposal } from './proposals'
-import { listSupportedApps, sanitizeUrl } from '../system/apps'
+import { listSupportedApps, resolveApp, sanitizeUrl } from '../system/apps'
 
 function clampLevel(args: Record<string, unknown>): number | null {
   const raw = args['level']
@@ -86,6 +86,11 @@ export function createSystemTools(
       const app = typeof args['app'] === 'string' ? args['app'].trim() : ''
       if (!app) {
         return `TOOL_ERROR: launch_app needs {"app": "notepad"}. Approved apps: ${listSupportedApps().join(', ')}`
+      }
+      if (!resolveApp(app)) {
+        const browserHint =
+          'To open a website, use app "Google Chrome" or "Microsoft Edge" with a url argument'
+        return `TOOL_ERROR: "${app}" is not approved. Approved apps: ${listSupportedApps().join(', ')}. ${browserHint}`
       }
       const rawUrl = args['url']
       const url =
