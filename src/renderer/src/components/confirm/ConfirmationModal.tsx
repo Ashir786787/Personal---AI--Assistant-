@@ -14,9 +14,7 @@ export function ConfirmationModal({ proposal, busy, onDecide }: Props): JSX.Elem
           <span className="confirm-shield">⚠</span>
           <h2>{proposal.title}</h2>
           <p className="confirm-sub">
-            I want to move <strong>{proposal.totalMoves}</strong> file
-            {proposal.totalMoves === 1 ? '' : 's'} into typed subfolders. Nothing happens until you
-            approve.
+            Review the details below. <strong>Nothing happens until you approve.</strong>
           </p>
         </div>
 

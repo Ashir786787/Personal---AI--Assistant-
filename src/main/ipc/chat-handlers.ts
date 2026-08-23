@@ -85,6 +85,51 @@ export function registerChatIpc(
     active?.abort()
   })
 
+  const ACTION_REPORT_PREFIX = '[SYSTEM ACTION REPORT]'
+
+  function describeProposal(proposal: PendingProposal): string {
+    const p = proposal.payload
+    switch (proposal.kind) {
+      case 'launch':
+        return p.url ? `open ${p.url} in ${p.app}` : `launch ${p.app}`
+      case 'volume':
+        return `set system volume to ${p.level ?? '?'}%`
+      case 'mute':
+        return 'toggle system mute'
+      case 'brightness':
+        return `set screen brightness to ${p.level ?? '?'}%`
+      case 'organize':
+        return `organize the "${proposal.sourceName ?? p.app ?? 'folder'}" folder`
+      case 'schedule':
+        return `schedule a routine (${p.app ?? ''})`
+      default:
+        return proposal.kind
+    }
+  }
+
+  const runActionFollowUp = (reportLines: string[]): void => {
+    if (active) active.abort()
+    const report = `${ACTION_REPORT_PREFIX} ${reportLines.join(' ')}`
+    memory.append('user', report)
+    const turns: ChatTurn[] = [
+      { role: 'system', content: `${SYSTEM_PROMPT}\n\n${TOOL_PROTOCOL_INSTRUCTIONS}` },
+      ...memory.recent().map((m) => ({ role: m.role, content: m.content }) as ChatTurn)
+    ]
+    const controller = new AbortController()
+    active = controller
+    void streamResponse(router, memory, registry, turns, controller, emit, '')
+      .catch((err: unknown) => {
+        log(
+          'error',
+          'chat',
+          `action follow-up failed: ${err instanceof Error ? err.message : String(err)}`
+        )
+      })
+      .finally(() => {
+        if (active === controller) active = null
+      })
+  }
+
   ipcMain.handle(IPC.actionDecide, async (_event, raw: unknown) => {
     const id =
       typeof (raw as { id?: unknown })?.['id'] === 'string' ? (raw as { id: string }).id : ''
@@ -95,13 +140,26 @@ export function registerChatIpc(
     resolveProposal(id)
     if (!approved) {
       log('info', 'action', `proposal ${id} cancelled by user`)
+      runActionFollowUp([
+        'The user reviewed the confirmation dialog and chose CANCEL.',
+        `Proposed action was: ${describeProposal(proposal)}.`,
+        'Nothing was changed. Acknowledge this in one short sentence and ask what they would like instead.'
+      ])
       return 'Cancelled. Nothing was changed'
     }
 
     log('info', 'action', `proposal ${id} approved — kind=${proposal.kind}`)
     return executeApproved(proposal, (summary) => {
-      memory.append('assistant', summary)
       emit({ type: 'tool', name: 'action_applied', argsSummary: summary })
+    }).then((summary) => {
+      runActionFollowUp([
+        `The user APPROVED the action: ${describeProposal(proposal)}.`,
+        `Execution finished with this exact result: ${summary}`,
+        summary.startsWith('✓')
+          ? 'Confirm the real outcome briefly. Do not invent anything that happened beyond the result line.'
+          : 'The action FAILED. Tell the user honestly what went wrong using only the result line above. Never claim success.'
+      ])
+      return summary
     })
   })
 }
@@ -150,7 +208,7 @@ async function executeApproved(
 
     if (proposal.kind === 'launch') {
       const app = proposal.payload.app ?? ''
-      const result = await launchApp(app)
+      const result = await launchApp(app, proposal.payload.url)
       const summary = `✓ ${result}`
       announce(summary)
       return summary

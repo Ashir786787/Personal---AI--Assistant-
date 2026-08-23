@@ -1,7 +1,7 @@
 import type { ToolDefinition } from '@shared/tools'
 import type { ActionProposal } from '@shared/ipc'
 import { createProposal } from './proposals'
-import { listSupportedApps } from '../system/apps'
+import { listSupportedApps, sanitizeUrl } from '../system/apps'
 
 function clampLevel(args: Record<string, unknown>): number | null {
   const raw = args['level']
@@ -75,9 +75,11 @@ export function createSystemTools(
 
   const launchAppTool: ToolDefinition = {
     name: 'launch_app',
-    description: `Propose launching an approved app. Allowed names: ${listSupportedApps()
+    description: `Propose launching an approved app, optionally opening a web address in Edge or Chrome. Allowed app names: ${listSupportedApps()
       .map((a) => `"${a}"`)
-      .join(', ')}. Anything else is refused`,
+      .join(
+        ', '
+      )}. For a website pass {"url": "https://..."}. For a Google search use https://www.google.com/search?q=YOUR+URL+ENCODED+WORDS. Anything else is refused`,
     mutating: false,
 
     async execute(args) {
@@ -85,17 +87,25 @@ export function createSystemTools(
       if (!app) {
         return `TOOL_ERROR: launch_app needs {"app": "notepad"}. Approved apps: ${listSupportedApps().join(', ')}`
       }
-      const proposal = createProposal({ kind: 'launch', payload: { app } })
+      const rawUrl = args['url']
+      const url =
+        typeof rawUrl === 'string' && rawUrl.trim().length > 0 ? sanitizeUrl(rawUrl) : null
+      if (typeof rawUrl === 'string' && rawUrl.trim().length > 0 && !url) {
+        return 'TOOL_ERROR: that url looked unsafe. Use a plain https:// address with normal URL-encoded characters'
+      }
+      const proposal = createProposal({ kind: 'launch', payload: { app, ...(url ? { url } : {}) } })
       emitProposal({
         id: proposal.id,
-        title: `Launch ${app}`,
+        title: url ? `Open ${url} in ${app}` : `Launch ${app}`,
         detailLines: [
-          `Starts "${app}" using Windows. If it is not installed, nothing happens.`,
-          'Only vetted apps can ever be launched by this assistant.'
+          url
+            ? `Opens this exact address in ${app}: ${url}`
+            : `Starts "${app}" using Windows. If it is not installed, nothing happens.`,
+          'Only vetted apps and safe https addresses can ever be used by this assistant.'
         ],
         totalMoves: 1
       })
-      return `A confirmation dialog to launch "${app}" was shown. Wait for the user decision`
+      return `A confirmation dialog was shown to the user${url ? ` for opening ${url}` : ''}. Wait for their decision. Nothing has happened yet`
     }
   }
 

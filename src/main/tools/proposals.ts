@@ -5,6 +5,7 @@ export type ProposalKind = 'organize' | 'volume' | 'brightness' | 'launch' | 'mu
 export interface ProposalPayload {
   level?: number
   app?: string
+  url?: string
   moves?: PlannedMove[]
 }
 
