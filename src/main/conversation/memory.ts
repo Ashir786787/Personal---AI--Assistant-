@@ -4,10 +4,20 @@ import type { ChatMessage, ChatRole } from '@shared/chat'
 
 export const MAX_CONTEXT_MESSAGES = 30
 export const MAX_PERSISTED_MESSAGES = 200
-export const MEMORY_FORMAT_VERSION = 2
+export const MEMORY_FORMAT_VERSION = 3
 const VALID_ROLES: ChatRole[] = ['user', 'assistant', 'tool']
 
-interface PersistedMemory {
+export interface MemoryCipher {
+  encrypt(plain: string): string | null
+  decrypt(blob: string): string | null
+}
+
+interface PersistedEnvelope {
+  version: number
+  payload?: string
+}
+
+interface PersistedMessages {
   version: number
   messages: ChatMessage[]
 }
@@ -16,8 +26,11 @@ export class ConversationMemory {
   private messages: ChatMessage[] = []
   private nextId = 1
   private persistPath: string | null = null
+  private cipher: MemoryCipher | null = null
+  private warnedUnencrypted = false
 
-  constructor(persistPath?: string) {
+  constructor(persistPath?: string, cipher?: MemoryCipher) {
+    this.cipher = cipher ?? null
     if (persistPath) {
       this.persistPath = persistPath
       this.loadFromDisk()
@@ -69,16 +82,35 @@ export class ConversationMemory {
     try {
       if (!existsSync(this.persistPath)) return
       const parsed = JSON.parse(readFileSync(this.persistPath, 'utf8')) as unknown
+      let inner: unknown = null
+
       if (
         typeof parsed === 'object' &&
         parsed !== null &&
-        'version' in parsed &&
-        (parsed as PersistedMemory).version === MEMORY_FORMAT_VERSION &&
-        Array.isArray((parsed as PersistedMemory).messages)
+        (parsed as PersistedEnvelope).version === MEMORY_FORMAT_VERSION &&
+        typeof (parsed as PersistedEnvelope).payload === 'string'
       ) {
-        this.hydrate((parsed as PersistedMemory).messages)
+        if (!this.cipher) return
+        const decrypted = this.cipher.decrypt((parsed as PersistedEnvelope).payload as string)
+        if (!decrypted) return
+        inner = JSON.parse(decrypted) as unknown
+      } else if (
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        (parsed as PersistedMessages).version === MEMORY_FORMAT_VERSION &&
+        Array.isArray((parsed as PersistedMessages).messages)
+      ) {
+        inner = parsed
       }
-      // anything else (old-format or corrupt) is discarded — fresh start
+
+      if (
+        typeof inner === 'object' &&
+        inner !== null &&
+        Array.isArray((inner as PersistedMessages).messages)
+      ) {
+        this.hydrate((inner as PersistedMessages).messages)
+      }
+      // anything else (old plaintext format, foreign ciphertext or corrupt data) is discarded
     } catch {
       // corrupt memory file starts fresh rather than blocking the app
     }
@@ -88,8 +120,25 @@ export class ConversationMemory {
     if (!this.persistPath) return
     try {
       mkdirSync(dirname(this.persistPath), { recursive: true })
-      const payload: PersistedMemory = { version: MEMORY_FORMAT_VERSION, messages: this.messages }
-      writeFileSync(this.persistPath, JSON.stringify(payload, null, 2))
+      const inner: PersistedMessages = { version: MEMORY_FORMAT_VERSION, messages: this.messages }
+
+      let file: string
+      if (this.cipher) {
+        const blob = this.cipher.encrypt(JSON.stringify(inner))
+        if (!blob) {
+          if (!this.warnedUnencrypted) {
+            this.warnedUnencrypted = true
+            console.error('[memory] disk encryption unavailable — conversation kept in RAM only')
+          }
+          return
+        }
+        const envelope: PersistedEnvelope = { version: MEMORY_FORMAT_VERSION, payload: blob }
+        file = JSON.stringify(envelope)
+      } else {
+        file = JSON.stringify(inner)
+      }
+
+      writeFileSync(this.persistPath, file)
     } catch {
       // best effort; conversation continues in RAM
     }

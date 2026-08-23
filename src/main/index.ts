@@ -9,6 +9,7 @@ import { registerChatIpc } from './ipc/chat-handlers'
 import { registerVoiceIpc } from './ipc/voice-handlers'
 import { registerSettingsIpc } from './ipc/settings-handlers'
 import { registerSystemHandlers } from './ipc/system-handlers'
+import { createDpapiCipher } from './security/vault'
 import { ToolRegistry } from './tools/registry'
 import { initAutoUpdater } from './updater'
 import { startScheduler } from './routines/scheduler'
@@ -114,7 +115,10 @@ if (!gotLock) {
     const mainWindow = createMainWindow()
 
     const router = new ProviderRouter([createGeminiProvider(), createGroqProvider()], 'gemini')
-    const memory = new ConversationMemory(join(app.getPath('userData'), 'memory.json'))
+    const memory = new ConversationMemory(
+      join(app.getPath('userData'), 'memory.json'),
+      createDpapiCipher()
+    )
     const registry = ToolRegistry.withDefaults((proposal) => {
       if (!mainWindow.isDestroyed()) mainWindow.webContents.send(IPC.actionProposed, proposal)
     })
