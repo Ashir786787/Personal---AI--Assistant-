@@ -21,6 +21,10 @@ export class ToolRegistry {
     return this.tools.get(name)?.mutating ?? true
   }
 
+  definitions(): ToolDefinition[] {
+    return [...this.tools.values()]
+  }
+
   async execute(action: ToolAction): Promise<string> {
     const tool = this.tools.get(action.tool)
     if (!tool) {

@@ -6,8 +6,10 @@ interface StatusBarProps {
   lastProvider: ProviderId | null
   busy: boolean
   theme: ThemeId
+  updateLabel: string | null
   onCycleTheme: () => void
   onOpenSettings: () => void
+  onUpdateOpen: () => void
 }
 
 export function StatusBar({
@@ -15,8 +17,10 @@ export function StatusBar({
   lastProvider,
   busy,
   theme,
+  updateLabel: label,
   onCycleTheme,
-  onOpenSettings
+  onOpenSettings,
+  onUpdateOpen
 }: StatusBarProps) {
   const micLabel = micState === 'listening' ? 'LIVE' : micState === 'denied' ? 'DENIED' : 'READY'
   const micColor =
@@ -44,6 +48,16 @@ export function StatusBar({
         </span>
         <span>Agents 0</span>
         <span className={busy ? 'text-accent' : ''}>{linkLabel}</span>
+        {label && (
+          <button
+            className="update-pill"
+            title="Update ready — click to open"
+            onClick={onUpdateOpen}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-warning animate-pulse" />
+            {label}
+          </button>
+        )}
         <button
           className="theme-pill"
           title={`Theme: ${theme} — click to switch`}

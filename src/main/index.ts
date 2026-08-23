@@ -8,6 +8,7 @@ import { ProviderRouter } from './llm/router'
 import { registerChatIpc } from './ipc/chat-handlers'
 import { registerVoiceIpc } from './ipc/voice-handlers'
 import { registerSettingsIpc } from './ipc/settings-handlers'
+import { registerSystemHandlers } from './ipc/system-handlers'
 import { ToolRegistry } from './tools/registry'
 import { initAutoUpdater } from './updater'
 import { startScheduler } from './routines/scheduler'
@@ -120,7 +121,8 @@ if (!gotLock) {
     registerChatIpc(mainWindow.webContents, router, memory, registry)
     registerVoiceIpc(mainWindow.webContents)
     registerSettingsIpc()
-    initAutoUpdater()
+    registerSystemHandlers(memory, registry)
+    initAutoUpdater(mainWindow.webContents)
     startScheduler((summaries) => {
       for (const summary of summaries) {
         if (!mainWindow.isDestroyed()) {

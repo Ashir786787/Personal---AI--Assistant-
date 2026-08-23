@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ProviderKeyStatus } from '@shared/ipc'
 import { THEME_ACCENT, THEME_IDS, THEME_LABEL, type ThemeId } from '../../theme'
+import { useUpdater, updateLabel } from '../../hooks/useUpdater'
 
 interface Props {
   onClose: () => void
@@ -18,6 +19,12 @@ export function SettingsPanel({ onClose, theme, onSetTheme }: Props): JSX.Elemen
   const [error, setError] = useState<string | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
   const [clearing, setClearing] = useState(false)
+  const { status: updateStatus, check } = useUpdater()
+  const [appVersion, setAppVersion] = useState('')
+
+  useEffect(() => {
+    void window.ashirs.getVersion().then(setAppVersion)
+  }, [])
 
   const doClear = async (really: boolean): Promise<void> => {
     if (!really) return
@@ -70,6 +77,24 @@ export function SettingsPanel({ onClose, theme, onSetTheme }: Props): JSX.Elemen
         </div>
 
         <div className="settings-body">
+          <div className="settings-row">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${appVersion ? 'bg-accent' : 'bg-zinc-600'}`}
+            />
+            <div className="settings-provider">
+              <strong>Version</strong>
+              <span>
+                {updateLabel(updateStatus) ? `Update ${updateLabel(updateStatus)}` : 'Up to date'}
+              </span>
+            </div>
+            <div className="flex flex-1 items-center gap-3">
+              <span className="font-mono text-xs text-ink-muted">{appVersion || '…'}</span>
+              <button className="btn-cancel btn-small" onClick={check}>
+                Check for updates
+              </button>
+            </div>
+          </div>
+
           <div className="settings-row">
             <span className="h-1.5 w-1.5 rounded-full bg-accent" />
             <div className="settings-provider">
