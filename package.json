@@ -1,6 +1,6 @@
 {
   "name": "ashirs-ai",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "Ashir's AI â€” a secure, local-first personal desktop assistant",
   "main": "./out/main/index.js",
   "author": "M. Ashir Mushtaq <m.ashirmushtaq@gmail.com>",

@@ -25,8 +25,8 @@ const CSP = [
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
-  "connect-src 'self' vosk-model:",
-  "font-src 'self'"
+  "connect-src 'self' vosk-model: data:",
+  "font-src 'self' data:"
 ].join('; ')
 
 function applySecurityPolicy(): void {

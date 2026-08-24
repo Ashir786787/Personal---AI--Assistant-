@@ -50,8 +50,11 @@ Nothing else. No telemetry, no analytics, no crash reporting endpoints.
   `%APPDATA%/ashirs-ai/wake/`.
 - CSP notes: `worker-src 'self' blob:` is required because vosk-browser builds
   its Kaldi worker from an inlined base64 blob (no remote script); the blob
-  inherits this same CSP. `connect-src vosk-model:` allows only that local
-  protocol. `script-src` includes `'wasm-unsafe-eval'` — the narrow CSP3 source
+  inherits this same CSP. `connect-src vosk-model: data:` allows only that
+  local protocol plus inline `data:` payloads — needed because the WASM engine
+  itself is embedded as a data URI (same for embedded fonts via `font-src`).
+  No http(s) origin beyond `'self'` and the pinned GitHub model release was
+  added. `script-src` includes `'wasm-unsafe-eval'` — the narrow CSP3 source
   that permits WebAssembly compilation only (Kaldi runs as WASM), not general
   `eval()`. The library's single eval-based shim is rewritten at install time
   by `scripts/patch-vosk.cjs` into an equivalent closure, so plain string
