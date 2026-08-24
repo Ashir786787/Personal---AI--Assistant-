@@ -1,11 +1,12 @@
 /**
  * Patches vosk-browser@0.0.8 for strict-CSP environments.
  *
- * The library's embedded Web Worker contains exactly one eval-class construct:
- * an Emscripten dynCall trampoline built with `new Function(...)`. Under a CSP
- * without 'unsafe-eval' that construct throws EvalError and kills model loading
- * silently. This script rewrites it into an equivalent closure (same semantics,
- * no string evaluation) directly inside the base64 worker payload.
+ * Stage 1 rewrites the Emscripten dynCall trampoline (`new Function(...)`)
+ * inside/outside the embedded worker payload into an equivalent closure.
+ * Stage 2 extracts the worker source to dist/ashirs-kaldi-worker.js and
+ * redirects worker creation to vosk-worker:// so the main process can serve
+ * it with a worker-scoped CSP (embind's craftInvokerFunction needs dynamic
+ * code compilation and cannot be statically rewritten).
  *
  * Idempotent. Runs on every npm install via the package.json "postinstall" hook.
  */
@@ -67,5 +68,53 @@ if (start >= 0) {
   }
 }
 
-fs.writeFileSync(file, src)
-console.log(`patch-vosk: replaced ${total} eval-class shim(s)`)
+/**
+ * Second stage — redirect worker creation through the vosk-worker:// protocol.
+ *
+ * Even with the dynCall shims above rewritten, Emscripten's embind layer builds
+ * invoker functions dynamically at runtime (craftInvokerFunction passes
+ * `Function` around by reference, e.g. `new_(Function, args1)`), which a strict
+ * page CSP always blocks. Rather than chase every site, we serve the worker
+ * script from its own protocol handler whose RESPONSE carries a worker-scoped
+ * CSP permitting dynamic code inside that isolated worker only. The page CSP
+ * stays strict.
+ *
+ * This extracts the decoded worker source to dist/ashirs-kaldi-worker.js
+ * (read by the main process at runtime), replaces the entire
+ * createBase64WorkerFactory(...) call expression with a tiny constructible
+ * shim pointing at the protocol URL, and patches any remaining eval-class
+ * constructs inside the extracted worker for defense in depth.
+ */
+const OUT_SHIM =
+  '(function(){return function(){return new Worker("vosk-worker://local/kaldi.js")}})()'
+const WORKER_OUT = path.join(path.dirname(file), 'ashirs-kaldi-worker.js')
+
+const mStart = src.indexOf(marker)
+if (mStart < 0) {
+  if (!src.includes('vosk-worker://')) {
+    console.error('patch-vosk: worker factory call site not found — vosk-browser layout changed?')
+    process.exit(1)
+  }
+  console.log('patch-vosk: already redirected to vosk-worker:// protocol')
+} else {
+  const from = mStart + marker.length
+  const to = src.indexOf(terminator, from)
+  if (!(to > from)) {
+    console.error('patch-vosk: worker factory terminator not found — aborting without changes')
+    process.exit(1)
+  }
+  const rawB64 = src.slice(from, to)
+  if (!/^[A-Za-z0-9+/=]+$/.test(rawB64)) {
+    console.error('patch-vosk: unexpected characters in worker payload — aborting without changes')
+    process.exit(1)
+  }
+  const inner = patchSource(Buffer.from(rawB64, 'base64').toString('utf8'))
+  total += inner.count
+  fs.writeFileSync(WORKER_OUT, inner.src)
+  src = src.slice(0, mStart) + OUT_SHIM + src.slice(to + terminator.length)
+  fs.writeFileSync(file, src)
+  console.log(`patch-vosk: emitted ${path.basename(WORKER_OUT)} (${Math.round(inner.src.length / 1_000_000)} MB)`)
+  console.log('patch-vosk: worker creation redirected to vosk-worker:// protocol')
+}
+
+console.log(`patch-vosk: done — ${total} eval-class shim(s) neutralized`)

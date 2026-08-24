@@ -10,7 +10,7 @@ import { registerVoiceIpc } from './ipc/voice-handlers'
 import { registerSettingsIpc } from './ipc/settings-handlers'
 import { registerSystemHandlers } from './ipc/system-handlers'
 import { registerWakeIpc } from './ipc/wake-handlers'
-import { modelFilePath } from './wake/store'
+import { modelFilePath, loadVoskWorkerSource } from './wake/store'
 import { createDpapiCipher } from './security/vault'
 import { readFileSync, existsSync } from 'node:fs'
 import { ToolRegistry } from './tools/registry'
@@ -22,11 +22,19 @@ import { log } from './lib/logger'
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'wasm-unsafe-eval'",
-  "worker-src 'self' blob:",
+  "worker-src 'self' vosk-worker:",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
-  "connect-src 'self' vosk-model: data:",
+  "connect-src 'self' vosk-model:",
   "font-src 'self' data:"
+].join('; ')
+
+// Worker-scoped CSP served with the vosk engine script itself. Emscripten's
+// embind layer compiles invoker functions dynamically at runtime, which needs
+// 'unsafe-eval' — granted ONLY inside this isolated worker, never the page.
+const VOSK_WORKER_CSP = [
+  "script-src 'unsafe-eval' 'wasm-unsafe-eval'",
+  'connect-src vosk-model: data:'
 ].join('; ')
 
 function applySecurityPolicy(): void {
@@ -108,6 +116,10 @@ if (!gotLock) {
     {
       scheme: 'vosk-model',
       privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true }
+    },
+    {
+      scheme: 'vosk-worker',
+      privileges: { standard: true, secure: true }
     }
   ])
 
@@ -136,6 +148,23 @@ if (!gotLock) {
           'Content-Length': String(bytes.length)
         }
       })
+    })
+
+    protocol.handle('vosk-worker', () => {
+      try {
+        const source = loadVoskWorkerSource()
+        return new Response(source, {
+          headers: {
+            'Content-Type': 'text/javascript',
+            'Content-Length': String(Buffer.byteLength(source)),
+            'Content-Security-Policy': VOSK_WORKER_CSP
+          }
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'vosk worker unavailable'
+        log('error', 'wake', message)
+        return new Response(message, { status: 500 })
+      }
     })
 
     const mainWindow = createMainWindow()

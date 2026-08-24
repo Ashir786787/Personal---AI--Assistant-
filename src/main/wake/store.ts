@@ -4,6 +4,7 @@ import {
   createWriteStream,
   existsSync,
   mkdirSync,
+  readFileSync,
   renameSync,
   statSync,
   unlinkSync
@@ -80,6 +81,24 @@ export function getWakeState(): WakeModelInternalState {
     current = { state: 'ready', url: modelUrl() }
   }
   return current
+}
+
+let cachedWorkerScript: string | null = null
+
+/**
+ * Loads the extracted vosk Web Worker source emitted by scripts/patch-vosk.cjs
+ * at install time (node_modules/vosk-browser/dist/ashirs-kaldi-worker.js).
+ * Served over vosk-worker:// so it can carry its own worker-scoped CSP
+ * (Emscripten's embind layer needs dynamic code compilation inside this
+ * isolated worker; the renderer page stays strict). Reads are asar-transparent.
+ */
+export function loadVoskWorkerSource(): string {
+  if (cachedWorkerScript) return cachedWorkerScript
+  const workerPath = join(__dirname, '../../node_modules/vosk-browser/dist/ashirs-kaldi-worker.js')
+  const source = readFileSync(workerPath, 'utf8')
+  log('info', 'wake', `vosk worker source loaded (${Math.round(source.length / 1_000_000)} MB)`)
+  cachedWorkerScript = source
+  return source
 }
 
 export async function startWakeModelDownload(): Promise<void> {

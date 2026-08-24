@@ -48,17 +48,19 @@ Nothing else. No telemetry, no analytics, no crash reporting endpoints.
 - The archive is served to the worker through a local `vosk-model://` protocol
   that only ever maps to the single downloaded file under
   `%APPDATA%/ashirs-ai/wake/`.
-- CSP notes: `worker-src 'self' blob:` is required because vosk-browser builds
-  its Kaldi worker from an inlined base64 blob (no remote script); the blob
-  inherits this same CSP. `connect-src vosk-model: data:` allows only that
-  local protocol plus inline `data:` payloads — needed because the WASM engine
-  itself is embedded as a data URI (same for embedded fonts via `font-src`).
-  No http(s) origin beyond `'self'` and the pinned GitHub model release was
-  added. `script-src` includes `'wasm-unsafe-eval'` — the narrow CSP3 source
-  that permits WebAssembly compilation only (Kaldi runs as WASM), not general
-  `eval()`. The library's single eval-based shim is rewritten at install time
-  by `scripts/patch-vosk.cjs` into an equivalent closure, so plain string
-  evaluation stays forbidden.
+- CSP notes: the Kaldi worker is **not** a blob any more. `scripts/patch-vosk.cjs`
+  (postinstall) extracts vosk-browser's embedded worker source and redirects
+  worker creation to `vosk-worker://local/kaldi.js`, a protocol handler in the
+  main process that serves that one file with its own **worker-scoped CSP**
+  (`script-src 'unsafe-eval' 'wasm-unsafe-eval'; connect-src vosk-model: data:`).
+  This is required because Emscripten's embind layer compiles invoker functions
+  dynamically at runtime (`craftInvokerFunction`), which cannot be statically
+  rewritten. The `'unsafe-eval'` grant therefore applies ONLY inside this
+  isolated speech worker — the renderer page CSP stays strict: no `unsafe-eval`
+  anywhere, `worker-src 'self' vosk-worker:` (no blob:), `connect-src 'self'
+vosk-model:`. Embedded fonts load via `font-src 'self' data:`. The dynCall
+  shim that used plain `new Function(...)` is still rewritten at install time
+  into an equivalent closure for defense in depth.
 - Phrase matching (`src/renderer/src/lib/wake-phrases.ts`) is pure string math
   on partial transcripts; nothing is recorded or transmitted while waiting for
   the wake phrase. Only after the phrase fires does normal (user-initiated)

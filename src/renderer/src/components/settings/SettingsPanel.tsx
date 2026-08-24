@@ -106,7 +106,7 @@ export function SettingsPanel({
         return `Downloading voice brain… ${wakeDownloadPercent ?? modelInfo.percent ?? 0}% (one time)`
       case 'preparing':
       case 'starting':
-        return 'Arming… (first run unpacks the voice brain — can take a minute or two)'
+        return 'Arming… unpacking the voice brain — can take a minute'
       case 'armed':
         return `Say "${wakePhrases[0]}" — just talk normally`
       case 'suspended':
