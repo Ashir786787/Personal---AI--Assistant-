@@ -23,9 +23,10 @@ import { log } from './lib/logger'
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
+  "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
-  "connect-src 'self'",
+  "connect-src 'self' vosk-model:",
   "font-src 'self'"
 ].join('; ')
 

@@ -48,6 +48,10 @@ Nothing else. No telemetry, no analytics, no crash reporting endpoints.
 - The archive is served to the worker through a local `vosk-model://` protocol
   that only ever maps to the single downloaded file under
   `%APPDATA%/ashirs-ai/wake/`.
+- CSP notes: `worker-src 'self' blob:` is required because vosk-browser builds
+  its Kaldi worker from an inlined base64 blob (no remote script); the blob
+  inherits this same CSP. `connect-src vosk-model:` allows only that local
+  protocol — no other origins were loosened.
 - Phrase matching (`src/renderer/src/lib/wake-phrases.ts`) is pure string math
   on partial transcripts; nothing is recorded or transmitted while waiting for
   the wake phrase. Only after the phrase fires does normal (user-initiated)

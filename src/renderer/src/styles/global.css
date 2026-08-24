@@ -464,6 +464,8 @@
   gap: 12px;
   margin: 0 20px;
   padding: 16px;
+  min-height: 0;
+  overflow-y: auto;
   border-radius: 8px;
   background-color: #101114;
 }
