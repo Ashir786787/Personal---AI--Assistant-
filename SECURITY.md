@@ -51,7 +51,11 @@ Nothing else. No telemetry, no analytics, no crash reporting endpoints.
 - CSP notes: `worker-src 'self' blob:` is required because vosk-browser builds
   its Kaldi worker from an inlined base64 blob (no remote script); the blob
   inherits this same CSP. `connect-src vosk-model:` allows only that local
-  protocol — no other origins were loosened.
+  protocol. `script-src` includes `'wasm-unsafe-eval'` — the narrow CSP3 source
+  that permits WebAssembly compilation only (Kaldi runs as WASM), not general
+  `eval()`. The library's single eval-based shim is rewritten at install time
+  by `scripts/patch-vosk.cjs` into an equivalent closure, so plain string
+  evaluation stays forbidden.
 - Phrase matching (`src/renderer/src/lib/wake-phrases.ts`) is pure string math
   on partial transcripts; nothing is recorded or transmitted while waiting for
   the wake phrase. Only after the phrase fires does normal (user-initiated)
