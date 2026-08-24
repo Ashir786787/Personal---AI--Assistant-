@@ -29,13 +29,29 @@ the code line-by-line before any messaging capability ships.
 
 ## Outbound connections (complete list)
 
-| #   | Destination                                    | When                                       | Data sent                                                                | Never sent                        |
-| --- | ---------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------ | --------------------------------- |
-| 1   | `api.groq.com`                                 | STT (voice), chat fallback                 | audio / prompt text                                                      | file contents not in conversation |
-| 2   | `generativelanguage.googleapis.com`            | Gemini chat + vision (Phase B)             | prompt text; screenshot ONLY when user explicitly asks a screen question | keys of other providers           |
-| 3   | `github.com` / `objects.githubusercontent.com` | update check + download (electron-updater) | version metadata                                                         | anything else                     |
+| #   | Destination                                    | When                                                                                             | Data sent                                                                | Never sent                        |
+| --- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ | --------------------------------- |
+| 1   | `api.groq.com`                                 | STT (voice), chat fallback                                                                       | audio / prompt text                                                      | file contents not in conversation |
+| 2   | `generativelanguage.googleapis.com`            | Gemini chat + vision (Phase B)                                                                   | prompt text; screenshot ONLY when user explicitly asks a screen question | keys of other providers           |
+| 3   | `github.com` / `objects.githubusercontent.com` | update check + download (electron-updater); wake-word model download (one time, on first enable) | version metadata; the model archive                                      | anything else                     |
 
 Nothing else. No telemetry, no analytics, no crash reporting endpoints.
+
+## Wake word (Vosk — on-device)
+
+- Engine: `vosk-browser` (Apache-2.0), Kaldi running as WebAssembly inside a
+  Web Worker. **Audio is transcribed entirely on this PC** — the mic stream
+  never leaves the process.
+- The model archive (`wake-model-en-v1.tar.gz`) is downloaded once from our own
+  GitHub release over HTTPS and **SHA-256-pinned** in `src/main/wake/store.ts`;
+  a checksum mismatch discards the file before it is ever used.
+- The archive is served to the worker through a local `vosk-model://` protocol
+  that only ever maps to the single downloaded file under
+  `%APPDATA%/ashirs-ai/wake/`.
+- Phrase matching (`src/renderer/src/lib/wake-phrases.ts`) is pure string math
+  on partial transcripts; nothing is recorded or transmitted while waiting for
+  the wake phrase. Only after the phrase fires does normal (user-initiated)
+  STT to Groq begin.
 
 ## Data at rest
 

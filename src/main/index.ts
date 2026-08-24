@@ -1,5 +1,6 @@
 import { join } from 'path'
-import { BrowserWindow, Menu, app, session, shell } from 'electron'
+import { pathToFileURL } from 'url'
+import { BrowserWindow, Menu, app, net, protocol, session, shell } from 'electron'
 import { IPC } from '@shared/ipc'
 import { ConversationMemory } from './conversation/memory'
 import { createGeminiProvider } from './llm/gemini'
@@ -9,7 +10,10 @@ import { registerChatIpc } from './ipc/chat-handlers'
 import { registerVoiceIpc } from './ipc/voice-handlers'
 import { registerSettingsIpc } from './ipc/settings-handlers'
 import { registerSystemHandlers } from './ipc/system-handlers'
+import { registerWakeIpc } from './ipc/wake-handlers'
+import { modelFilePath } from './wake/store'
 import { createDpapiCipher } from './security/vault'
+import { existsSync } from 'node:fs'
 import { ToolRegistry } from './tools/registry'
 import { initAutoUpdater } from './updater'
 import { startScheduler } from './routines/scheduler'
@@ -100,6 +104,13 @@ if (!gotLock) {
 } else {
   app.enableSandbox()
 
+  protocol.registerSchemesAsPrivileged([
+    {
+      scheme: 'vosk-model',
+      privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true }
+    }
+  ])
+
   app.on('second-instance', () => {
     const [win] = BrowserWindow.getAllWindows()
     if (win) {
@@ -111,6 +122,14 @@ if (!gotLock) {
   app.whenReady().then(() => {
     Menu.setApplicationMenu(null)
     applySecurityPolicy()
+
+    protocol.handle('vosk-model', () => {
+      const file = modelFilePath()
+      if (!existsSync(file)) {
+        return new Response('wake model not downloaded yet', { status: 404 })
+      }
+      return net.fetch(pathToFileURL(file).toString())
+    })
 
     const mainWindow = createMainWindow()
 
@@ -126,6 +145,7 @@ if (!gotLock) {
     registerVoiceIpc(mainWindow.webContents)
     registerSettingsIpc()
     registerSystemHandlers(memory, registry)
+    registerWakeIpc(mainWindow.webContents)
     initAutoUpdater(mainWindow.webContents)
     startScheduler((summaries) => {
       for (const summary of summaries) {

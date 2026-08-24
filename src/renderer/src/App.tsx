@@ -221,6 +221,9 @@ export function App() {
           onSetTheme={setTheme}
           wakeEnabled={wakeEnabled}
           wakeStatus={wake.status}
+          wakeDownloadPercent={wake.downloadPercent}
+          wakeError={wake.error}
+          wakePhrases={wake.phrases}
           onToggleWake={toggleWake}
         />
       )}

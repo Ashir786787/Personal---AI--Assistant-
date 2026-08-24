@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ProviderKeyStatus } from '@shared/ipc'
+import type { ProviderKeyStatus, WakeModelStateInfo } from '@shared/ipc'
 import { THEME_ACCENT, THEME_IDS, THEME_LABEL, type ThemeId } from '../../theme'
 import { useUpdater, updateLabel } from '../../hooks/useUpdater'
 import type { WakeStatus } from '../../hooks/useWakeWord'
@@ -10,6 +10,9 @@ interface Props {
   onSetTheme: (theme: ThemeId) => void
   wakeEnabled: boolean
   wakeStatus: WakeStatus
+  wakeDownloadPercent: number | null
+  wakeError: string | null
+  wakePhrases: readonly string[]
   onToggleWake: () => void
 }
 
@@ -21,6 +24,9 @@ export function SettingsPanel({
   onSetTheme,
   wakeEnabled,
   wakeStatus,
+  wakeDownloadPercent,
+  wakeError,
+  wakePhrases,
   onToggleWake
 }: Props): JSX.Element {
   const [status, setStatus] = useState<ProviderKeyStatus>({ gemini: false, groq: false })
@@ -32,13 +38,14 @@ export function SettingsPanel({
   const [clearing, setClearing] = useState(false)
   const { status: updateStatus, check } = useUpdater()
   const [appVersion, setAppVersion] = useState('')
-  const [wakeKey, setWakeKey] = useState('')
-  const [wakeSaved, setWakeSaved] = useState(false)
-  const [wakeError, setWakeError] = useState<string | null>(null)
   const [checkNote, setCheckNote] = useState<string | null>(null)
+  const [modelInfo, setModelInfo] = useState<WakeModelStateInfo>({ state: 'missing' })
 
   useEffect(() => {
     void window.ashirs.getVersion().then(setAppVersion)
+    void window.ashirs.getWakeModelState().then(setModelInfo)
+    const unsubscribe = window.ashirs.onWakeModelProgress(setModelInfo)
+    return unsubscribe
   }, [])
 
   useEffect(() => {
@@ -91,32 +98,21 @@ export function SettingsPanel({
 
   const dot = (live: boolean): string => (live ? 'bg-emerald-400' : 'bg-zinc-600')
 
-  const saveWakeKey = async (): Promise<void> => {
-    if (wakeKey.trim().length === 0) return
-    setWakeSaved(false)
-    setWakeError(null)
-    try {
-      await window.ashirs.setWakeKey(wakeKey.trim())
-      setWakeKey('')
-      setWakeSaved(true)
-    } catch (err) {
-      setWakeError(err instanceof Error ? err.message : 'Could not save the key')
-    }
-  }
-
   const wakeStateLine = (): string => {
     if (!wakeEnabled) return 'Off — tap the orb or type instead'
+    if (wakeError) return wakeError
     switch (wakeStatus) {
-      case 'armed':
-        return 'Listening for "Jarvis" — just say the word'
+      case 'downloading':
+        return `Downloading voice brain… ${wakeDownloadPercent ?? modelInfo.percent ?? 0}% (one time)`
+      case 'preparing':
       case 'starting':
         return 'Arming…'
+      case 'armed':
+        return `Say "${wakePhrases[0]}" — just talk normally`
       case 'suspended':
         return 'Standing by while I listen to you'
-      case 'no-key':
-        return 'Needs a free Picovoice access key below'
       case 'error':
-        return 'Engine error — check the key and toggle again'
+        return 'Engine error — toggle off and on to retry'
       default:
         return 'Off'
     }
@@ -235,7 +231,7 @@ export function SettingsPanel({
               className={`h-1.5 w-1.5 rounded-full ${
                 wakeStatus === 'armed'
                   ? 'bg-accent animate-pulse'
-                  : wakeStatus === 'no-key' || wakeStatus === 'error'
+                  : wakeStatus === 'error' || wakeStatus === 'downloading'
                     ? 'bg-warning'
                     : 'bg-zinc-600'
               }`}
@@ -252,35 +248,36 @@ export function SettingsPanel({
             </button>
           </div>
 
-          {(wakeEnabled || wakeKey.length > 0) && (
-            <div className="settings-row">
-              <span className="h-1.5 w-1.5 rounded-full bg-zinc-600" />
-              <div className="settings-provider">
-                <strong>Picovoice key</strong>
-                <span>
-                  Free at console.picovoice.ai — stays encrypted on this PC. Audio for the wake word
-                  never leaves your machine.
-                </span>
+          {wakeEnabled && (
+            <>
+              {wakeStatus === 'downloading' && (
+                <div className="settings-row">
+                  <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+                  <div className="settings-provider">
+                    <strong>Voice model download</strong>
+                    <span>~42 MB, one time — runs in the background</span>
+                  </div>
+                </div>
+              )}
+              <div className="settings-row">
+                <span className="h-1.5 w-1.5 rounded-full bg-zinc-600" />
+                <div className="settings-provider">
+                  <strong>Say any of these</strong>
+                  <span>All processed on this PC only — no audio ever leaves it.</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {wakePhrases.map((phrase) => (
+                    <span key={phrase} className="chip chip-neutral">
+                      "{phrase}"
+                    </span>
+                  ))}
+                </div>
               </div>
-              <input
-                type="password"
-                placeholder="Paste Picovoice AccessKey"
-                value={wakeKey}
-                onChange={(e) => setWakeKey(e.target.value)}
-              />
-              <button
-                className="btn-approve btn-small"
-                disabled={wakeKey.trim().length === 0}
-                onClick={() => void saveWakeKey()}
-              >
-                Save
-              </button>
-            </div>
+            </>
           )}
-          {wakeSaved && (
-            <p className="settings-ok">Wake-word key saved — toggle it back on to arm</p>
+          {modelInfo.state === 'error' && (
+            <p className="settings-err">Model download failed: {modelInfo.error}</p>
           )}
-          {wakeError && <p className="settings-err">{wakeError}</p>}
 
           <div className="settings-row settings-row-top">
             <span className="h-1.5 w-1.5 rounded-full bg-warning" />

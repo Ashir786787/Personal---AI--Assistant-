@@ -56,17 +56,19 @@ export function StatusBar({
             className="flex items-center gap-1.5"
             title={
               wakeStatus === 'armed'
-                ? 'Wake word armed — say "Jarvis"'
-                : wakeStatus === 'no-key' || wakeStatus === 'error'
+                ? 'Wake word armed — say "Jarvis" or "Hey Dude"'
+                : wakeStatus === 'error'
                   ? 'Wake word needs setup in Settings'
-                  : 'Wake word standing by'
+                  : wakeStatus === 'downloading'
+                    ? 'Downloading wake-word model'
+                    : 'Wake word standing by'
             }
           >
             <span
               className={`h-1.5 w-1.5 rounded-full ${
                 wakeStatus === 'armed'
                   ? 'bg-accent animate-pulse'
-                  : wakeStatus === 'no-key' || wakeStatus === 'error'
+                  : wakeStatus === 'error' || wakeStatus === 'downloading'
                     ? 'bg-warning'
                     : 'bg-ink-muted'
               }`}

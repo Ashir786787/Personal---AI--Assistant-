@@ -8,7 +8,8 @@ import type {
   SkillEntry,
   SystemStats,
   UpdateStatus,
-  VoiceRecording
+  VoiceRecording,
+  WakeModelStateInfo
 } from '@shared/ipc'
 import { IPC } from '@shared/ipc'
 
@@ -46,8 +47,13 @@ const bridge: AshirsBridge = {
   listSkills: () => ipcRenderer.invoke(IPC.toolsList) as Promise<SkillEntry[]>,
   systemStats: () => ipcRenderer.invoke(IPC.systemStats) as Promise<SystemStats>,
   memorySummary: () => ipcRenderer.invoke(IPC.memorySummary) as Promise<MemorySummary>,
-  getWakeKey: () => ipcRenderer.invoke(IPC.wakeGet) as Promise<string | null>,
-  setWakeKey: (key: string) => ipcRenderer.invoke(IPC.wakeSet, key) as Promise<void>
+  getWakeModelState: () => ipcRenderer.invoke(IPC.wakeModelState) as Promise<WakeModelStateInfo>,
+  startWakeModelDownload: () => ipcRenderer.invoke(IPC.wakeModelStart) as Promise<void>,
+  onWakeModelProgress: (listener: (info: WakeModelStateInfo) => void) => {
+    const wrapped = (_event: unknown, info: WakeModelStateInfo): void => listener(info)
+    ipcRenderer.on(IPC.wakeModelProgress, wrapped)
+    return () => ipcRenderer.removeListener(IPC.wakeModelProgress, wrapped)
+  }
 }
 
 contextBridge.exposeInMainWorld('ashirs', bridge)

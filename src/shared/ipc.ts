@@ -18,8 +18,9 @@ export const IPC = {
   toolsList: 'tools:list',
   systemStats: 'system:stats',
   memorySummary: 'memory:summary',
-  wakeGet: 'wake:get',
-  wakeSet: 'wake:set'
+  wakeModelState: 'wake:model-state',
+  wakeModelStart: 'wake:model-start',
+  wakeModelProgress: 'wake:model-progress'
 } as const
 
 export interface VoiceRecording {
@@ -69,6 +70,13 @@ export interface MemorySummary {
   oldestAt: number | null
 }
 
+export interface WakeModelStateInfo {
+  state: 'missing' | 'downloading' | 'ready' | 'error'
+  percent?: number
+  error?: string
+  url?: string
+}
+
 export interface AshirsBridge {
   sendChat(request: SendChatRequest): Promise<SendChatResponse>
   cancelChat(): void
@@ -86,6 +94,7 @@ export interface AshirsBridge {
   listSkills(): Promise<SkillEntry[]>
   systemStats(): Promise<SystemStats>
   memorySummary(): Promise<MemorySummary>
-  getWakeKey(): Promise<string | null>
-  setWakeKey(key: string): Promise<void>
+  getWakeModelState(): Promise<WakeModelStateInfo>
+  startWakeModelDownload(): Promise<void>
+  onWakeModelProgress(listener: (info: WakeModelStateInfo) => void): () => void
 }
