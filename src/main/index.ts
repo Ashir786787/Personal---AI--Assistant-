@@ -1,6 +1,5 @@
 import { join } from 'path'
-import { pathToFileURL } from 'url'
-import { BrowserWindow, Menu, app, net, protocol, session, shell } from 'electron'
+import { BrowserWindow, Menu, app, protocol, session, shell } from 'electron'
 import { IPC } from '@shared/ipc'
 import { ConversationMemory } from './conversation/memory'
 import { createGeminiProvider } from './llm/gemini'
@@ -13,7 +12,7 @@ import { registerSystemHandlers } from './ipc/system-handlers'
 import { registerWakeIpc } from './ipc/wake-handlers'
 import { modelFilePath } from './wake/store'
 import { createDpapiCipher } from './security/vault'
-import { existsSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { ToolRegistry } from './tools/registry'
 import { initAutoUpdater } from './updater'
 import { startScheduler } from './routines/scheduler'
@@ -129,7 +128,14 @@ if (!gotLock) {
       if (!existsSync(file)) {
         return new Response('wake model not downloaded yet', { status: 404 })
       }
-      return net.fetch(pathToFileURL(file).toString())
+      const bytes = readFileSync(file)
+      log('info', 'wake', `serving model archive (${Math.round(bytes.length / 1_000_000)} MB)`)
+      return new Response(bytes, {
+        headers: {
+          'Content-Type': 'application/gzip',
+          'Content-Length': String(bytes.length)
+        }
+      })
     })
 
     const mainWindow = createMainWindow()

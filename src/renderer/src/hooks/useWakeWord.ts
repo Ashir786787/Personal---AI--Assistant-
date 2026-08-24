@@ -35,6 +35,7 @@ type Engine = {
   ctx: AudioContext
   node: ScriptProcessorNode
   source: MediaStreamAudioSourceNode
+  mute: GainNode
   stream: MediaStream
 }
 
@@ -67,6 +68,7 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
     try {
       engine.source.disconnect()
       engine.node.disconnect()
+      engine.mute.disconnect()
     } catch {
       // already torn down
     }
@@ -123,12 +125,23 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
 
     setStatus('starting')
 
+    const watchdog = window.setTimeout(() => {
+      if (generation !== generationRef.current) return
+      if (engineRef.current) return
+      setError('The voice engine took too long to start — toggle off and on to retry')
+      setStatus('error')
+    }, 180_000)
+
     try {
       const vosk = await import('vosk-browser')
-      if (generation !== generationRef.current) return
+      if (generation !== generationRef.current) {
+        window.clearTimeout(watchdog)
+        return
+      }
 
       const model = await vosk.createModel(modelUrl)
       if (generation !== generationRef.current) {
+        window.clearTimeout(watchdog)
         model.terminate()
         return
       }
@@ -160,6 +173,7 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
         }
       })
       if (generation !== generationRef.current) {
+        window.clearTimeout(watchdog)
         stream.getTracks().forEach((track) => track.stop())
         model.terminate()
         return
@@ -167,6 +181,8 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
 
       const ctx = new AudioContext({ sampleRate: 16000 })
       const node = ctx.createScriptProcessor(4096, 1, 1)
+      const mute = ctx.createGain()
+      mute.gain.value = 0
       node.onaudioprocess = (event) => {
         try {
           recognizer.acceptWaveform(event.inputBuffer)
@@ -176,10 +192,14 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
       }
       const source = ctx.createMediaStreamSource(stream)
       source.connect(node)
+      node.connect(mute)
+      mute.connect(ctx.destination)
 
-      engineRef.current = { model, recognizer, ctx, node, source, stream }
+      engineRef.current = { model, recognizer, ctx, node, source, mute, stream }
+      window.clearTimeout(watchdog)
       setStatus(suspendedRef.current ? 'suspended' : 'armed')
     } catch (err) {
+      window.clearTimeout(watchdog)
       if (generation !== generationRef.current) return
       const message = err instanceof Error ? err.message : 'Wake-word engine failed to start'
       setError(message)
