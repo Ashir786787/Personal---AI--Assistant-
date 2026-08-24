@@ -31,6 +31,9 @@ export function UpdateOverlay({ status, onClose, onCheck, onInstall }: Props): J
           {status.status === 'idle' && (
             <p className="update-line">You are on the latest published build.</p>
           )}
+          {status.status === 'not-available' && (
+            <p className="update-line text-accent">Checked — you are running the latest version.</p>
+          )}
           {status.status === 'checking' && <p className="update-line">Checking for updates…</p>}
           {status.status === 'available' && (
             <p className="update-line text-accent">

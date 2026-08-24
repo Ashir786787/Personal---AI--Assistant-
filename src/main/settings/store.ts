@@ -7,6 +7,7 @@ import { envKey } from '../lib/env'
 interface StoredKeys {
   gemini?: string
   groq?: string
+  porcupine?: string
 }
 
 let cache: StoredKeys | null = null
@@ -47,5 +48,14 @@ export function getApiKey(provider: ProviderId): string | undefined {
 
 export function setApiKey(provider: ProviderId, key: string): void {
   const keys = { ...readStore(), [provider]: key }
+  writeStore(keys)
+}
+
+export function getWakeKey(): string | undefined {
+  return readStore().porcupine
+}
+
+export function setWakeKey(key: string): void {
+  const keys = { ...readStore(), porcupine: key }
   writeStore(keys)
 }

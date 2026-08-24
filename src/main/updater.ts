@@ -34,7 +34,7 @@ export function initAutoUpdater(webContents: WebContents): UpdateController {
   autoUpdater.on('update-available', (info) =>
     emit({ status: 'available', version: info.version ?? '' })
   )
-  autoUpdater.on('update-not-available', () => emit({ status: 'idle' }))
+  autoUpdater.on('update-not-available', () => emit({ status: 'not-available' }))
   autoUpdater.on('download-progress', (progress) =>
     emit({ status: 'downloading', percent: Math.round(progress.percent ?? 0) })
   )

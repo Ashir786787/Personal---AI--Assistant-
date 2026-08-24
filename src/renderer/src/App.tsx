@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { StatusBar } from './components/status/StatusBar'
 import { MessageList } from './components/chat/MessageList'
 import { ChatInput } from './components/chat/ChatInput'
@@ -21,6 +21,7 @@ import { useSpeech } from './hooks/useSpeech'
 import { useProposals } from './hooks/useProposals'
 import { useTheme } from './hooks/useTheme'
 import { useUpdater, updateLabel } from './hooks/useUpdater'
+import { useWakeWord, isWakeEnabledStored, setWakeEnabledStored } from './hooks/useWakeWord'
 
 const TTS_STORAGE_KEY = 'ashirs.tts-enabled'
 
@@ -48,6 +49,35 @@ export function App() {
     setDraft(text)
   }, [])
   const voice = useVoiceRecorder({ onFinal: handleTranscript, onInterim: handleInterim })
+
+  const busyRef = useRef(busy)
+  busyRef.current = busy
+  const voiceRef = useRef(voice)
+  voiceRef.current = voice
+
+  const [wakeEnabled, setWakeEnabled] = useState(isWakeEnabledStored)
+  const handleWake = useCallback((): void => {
+    if (busyRef.current || voiceRef.current.recording) return
+    setView('core')
+    voiceRef.current.toggle()
+  }, [])
+  const wake = useWakeWord({ enabled: wakeEnabled, onWake: handleWake })
+
+  useEffect(() => {
+    if (!wakeEnabled) return
+    if (voice.recording) {
+      wake.suspend()
+    } else if (wake.status === 'suspended') {
+      wake.resume()
+    }
+  }, [voice.recording, wakeEnabled, wake])
+
+  const toggleWake = (): void => {
+    setWakeEnabled((prev) => {
+      setWakeEnabledStored(!prev)
+      return !prev
+    })
+  }
 
   useEffect(() => {
     const last = messages[messages.length - 1]
@@ -92,6 +122,7 @@ export function App() {
           busy={busy}
           theme={theme}
           updateLabel={updateBadge}
+          wakeStatus={wakeEnabled ? wake.status : null}
           onCycleTheme={cycleTheme}
           onOpenSettings={() => openCircuit('settings')}
           onUpdateOpen={() => setUpdateOpen(true)}
@@ -184,7 +215,14 @@ export function App() {
         />
       )}
       {settingsOpen && (
-        <SettingsPanel onClose={() => setSettingsOpen(false)} theme={theme} onSetTheme={setTheme} />
+        <SettingsPanel
+          onClose={() => setSettingsOpen(false)}
+          theme={theme}
+          onSetTheme={setTheme}
+          wakeEnabled={wakeEnabled}
+          wakeStatus={wake.status}
+          onToggleWake={toggleWake}
+        />
       )}
     </div>
   )

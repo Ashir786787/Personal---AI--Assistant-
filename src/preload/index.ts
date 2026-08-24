@@ -45,7 +45,9 @@ const bridge: AshirsBridge = {
   getVersion: () => ipcRenderer.invoke(IPC.updateVersion) as Promise<string>,
   listSkills: () => ipcRenderer.invoke(IPC.toolsList) as Promise<SkillEntry[]>,
   systemStats: () => ipcRenderer.invoke(IPC.systemStats) as Promise<SystemStats>,
-  memorySummary: () => ipcRenderer.invoke(IPC.memorySummary) as Promise<MemorySummary>
+  memorySummary: () => ipcRenderer.invoke(IPC.memorySummary) as Promise<MemorySummary>,
+  getWakeKey: () => ipcRenderer.invoke(IPC.wakeGet) as Promise<string | null>,
+  setWakeKey: (key: string) => ipcRenderer.invoke(IPC.wakeSet, key) as Promise<void>
 }
 
 contextBridge.exposeInMainWorld('ashirs', bridge)

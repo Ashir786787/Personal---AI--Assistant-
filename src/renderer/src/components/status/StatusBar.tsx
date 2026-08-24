@@ -1,5 +1,6 @@
 import type { ProviderId } from '@shared/providers'
 import { THEME_ACCENT, type ThemeId } from '../../theme'
+import type { WakeStatus } from '../../hooks/useWakeWord'
 
 interface StatusBarProps {
   micState: 'idle' | 'listening' | 'denied'
@@ -7,6 +8,7 @@ interface StatusBarProps {
   busy: boolean
   theme: ThemeId
   updateLabel: string | null
+  wakeStatus: WakeStatus | null
   onCycleTheme: () => void
   onOpenSettings: () => void
   onUpdateOpen: () => void
@@ -18,6 +20,7 @@ export function StatusBar({
   busy,
   theme,
   updateLabel: label,
+  wakeStatus,
   onCycleTheme,
   onOpenSettings,
   onUpdateOpen
@@ -48,6 +51,29 @@ export function StatusBar({
         </span>
         <span>Agents 0</span>
         <span className={busy ? 'text-accent' : ''}>{linkLabel}</span>
+        {wakeStatus && wakeStatus !== 'off' && (
+          <span
+            className="flex items-center gap-1.5"
+            title={
+              wakeStatus === 'armed'
+                ? 'Wake word armed — say "Jarvis"'
+                : wakeStatus === 'no-key' || wakeStatus === 'error'
+                  ? 'Wake word needs setup in Settings'
+                  : 'Wake word standing by'
+            }
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                wakeStatus === 'armed'
+                  ? 'bg-accent animate-pulse'
+                  : wakeStatus === 'no-key' || wakeStatus === 'error'
+                    ? 'bg-warning'
+                    : 'bg-ink-muted'
+              }`}
+            />
+            Wake
+          </span>
+        )}
         {label && (
           <button
             className="update-pill"

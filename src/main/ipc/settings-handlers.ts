@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { IPC, type ProviderKeyStatus } from '@shared/ipc'
 import type { ProviderId } from '@shared/providers'
-import { getApiKey, setApiKey } from '../settings/store'
+import { getApiKey, setApiKey, getWakeKey, setWakeKey } from '../settings/store'
 import { log } from '../lib/logger'
 
 const VALID_PROVIDERS: ProviderId[] = ['gemini', 'groq']
@@ -21,5 +21,14 @@ export function registerSettingsIpc(): void {
     if (key.length === 0) throw new Error('Key is empty')
     setApiKey(provider as ProviderId, key)
     log('info', 'settings', `api key saved for ${String(provider)} (encrypted store)`)
+  })
+
+  ipcMain.handle(IPC.wakeGet, (): string | null => getWakeKey() ?? null)
+
+  ipcMain.handle(IPC.wakeSet, (_event, raw: unknown) => {
+    const key = String(raw ?? '').trim()
+    if (key.length === 0) throw new Error('Key is empty')
+    setWakeKey(key)
+    log('info', 'settings', 'wake-word access key saved (encrypted store)')
   })
 }

@@ -17,7 +17,9 @@ export const IPC = {
   updateVersion: 'update:version',
   toolsList: 'tools:list',
   systemStats: 'system:stats',
-  memorySummary: 'memory:summary'
+  memorySummary: 'memory:summary',
+  wakeGet: 'wake:get',
+  wakeSet: 'wake:set'
 } as const
 
 export interface VoiceRecording {
@@ -40,6 +42,7 @@ export interface ProviderKeyStatus {
 export type UpdateStatus =
   | { status: 'idle' }
   | { status: 'checking' }
+  | { status: 'not-available' }
   | { status: 'available'; version: string }
   | { status: 'downloading'; percent: number }
   | { status: 'ready'; version: string }
@@ -83,4 +86,6 @@ export interface AshirsBridge {
   listSkills(): Promise<SkillEntry[]>
   systemStats(): Promise<SystemStats>
   memorySummary(): Promise<MemorySummary>
+  getWakeKey(): Promise<string | null>
+  setWakeKey(key: string): Promise<void>
 }
