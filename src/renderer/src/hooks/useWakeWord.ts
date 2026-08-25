@@ -58,9 +58,14 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
   const generationRef = useRef(0)
   const hooksRef = useRef(onWake)
   hooksRef.current = onWake
+  const healthRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const teardown = useCallback((): void => {
     generationRef.current += 1
+    if (healthRef.current) {
+      clearInterval(healthRef.current)
+      healthRef.current = null
+    }
     const engine = engineRef.current
     engineRef.current = null
     if (!engine) return
@@ -198,6 +203,43 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
       engineRef.current = { model, recognizer, ctx, node, source, mute, stream }
       window.clearTimeout(watchdog)
       setStatus(suspendedRef.current ? 'suspended' : 'armed')
+
+      if (healthRef.current) clearInterval(healthRef.current)
+      healthRef.current = window.setInterval(() => {
+        if (generation !== generationRef.current) {
+          if (healthRef.current) {
+            clearInterval(healthRef.current)
+            healthRef.current = null
+          }
+          return
+        }
+        if (suspendedRef.current) return
+        if (!engineRef.current) {
+          console.warn('[wake] health check: engine gone, restarting')
+          if (healthRef.current) {
+            clearInterval(healthRef.current)
+            healthRef.current = null
+          }
+          void startEngine()
+          return
+        }
+        const eng = engineRef.current
+        if (
+          eng.ctx.state === 'closed' ||
+          eng.stream.getTracks().every((t) => t.readyState === 'ended')
+        ) {
+          console.warn('[wake] health check: audio dead, restarting engine')
+          if (healthRef.current) {
+            clearInterval(healthRef.current)
+            healthRef.current = null
+          }
+          teardown()
+          void startEngine()
+        } else if (eng.ctx.state === 'suspended') {
+          console.info('[wake] health check: AudioContext suspended, resuming')
+          void eng.ctx.resume()
+        }
+      }, 30_000)
     } catch (err) {
       window.clearTimeout(watchdog)
       if (generation !== generationRef.current) return

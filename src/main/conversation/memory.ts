@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'path'
 import type { ChatMessage, ChatRole } from '@shared/chat'
 
-export const MAX_CONTEXT_MESSAGES = 30
+export const MAX_CONTEXT_MESSAGES = 20
 export const MAX_PERSISTED_MESSAGES = 200
 export const MEMORY_FORMAT_VERSION = 3
 const VALID_ROLES: ChatRole[] = ['user', 'assistant', 'tool']

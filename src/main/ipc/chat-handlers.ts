@@ -253,6 +253,7 @@ async function streamResponse(
   const attempted = new Set<string>()
   const failed = new Set<ProviderId>()
   let nudged = false
+  let retriedSmall = false
 
   for (let hop = 0; ; hop++) {
     const provider = failed.size > 0 ? router.pick(Date.now(), [...failed]) : router.pick()
@@ -299,6 +300,16 @@ async function streamResponse(
 
       const isProviderError = err instanceof ProviderError
       const canFailOver = isProviderError && err.recoverable && attempted.size < router.count
+
+      if (isProviderError && err.status === 413 && !retriedSmall) {
+        log('warn', 'chat', `${provider.id} 413 payload too large — retrying with smaller context`)
+        retriedSmall = true
+        turns.length = 1
+        turns.push(
+          ...memory.recent(10).map((m) => ({ role: m.role, content: m.content }) as ChatTurn)
+        )
+        continue
+      }
 
       if (canFailOver) {
         if (err.status === 429) router.markRateLimited(err.provider)
