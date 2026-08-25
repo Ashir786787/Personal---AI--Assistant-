@@ -47,6 +47,12 @@ export function describeProviderFailure(provider: ProviderId, status: number): P
       }
     )
   }
+  if (status === 413) {
+    return new ProviderError(provider, `${name} payload too large — trying a smaller request`, {
+      status,
+      recoverable: true
+    })
+  }
   return new ProviderError(provider, `${name} refused the request (${status})`, {
     status,
     recoverable: false

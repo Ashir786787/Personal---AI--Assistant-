@@ -74,11 +74,12 @@ export function App() {
   useEffect(() => {
     if (!wakeEnabled) return
     if (voice.recording || speaking) {
-      // don't listen while the user dictates or while Jarvis speaks
-      // (otherwise the speaker output can re-trigger the wake phrase)
       wake.suspend()
     } else if (wake.status === 'suspended') {
       wake.resume()
+    } else if (wake.status === 'error') {
+      setWakeEnabled(false)
+      setTimeout(() => setWakeEnabled(true), 1000)
     }
   }, [voice.recording, speaking, wakeEnabled, wake])
 

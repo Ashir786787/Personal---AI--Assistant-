@@ -23,12 +23,17 @@ import { log } from '../lib/logger'
 const MAX_INPUT_LENGTH = 8000
 const PROVIDER_TIMEOUT_MS = 45_000
 const MAX_TOOL_HOPS = 6
+const MAX_TURN_CHARS = 2000
 
 const CUTOFF_MARKER = '[my previous answer was cut off mid-sentence]'
 const BUDGET_LINE =
   'I\'ve used my step budget for this request and stopped safely. Say "continue" and I\'ll pick up where I left off'
 
 export class ValidationError extends Error {}
+
+function truncate(text: string, max = MAX_TURN_CHARS): string {
+  return text.length > max ? text.slice(0, max) + '…(truncated)' : text
+}
 
 function parseRequest(raw: unknown): SendChatRequest {
   if (typeof raw !== 'object' || raw === null || !('text' in raw)) {
@@ -64,7 +69,7 @@ export function registerChatIpc(
     const userMessage = memory.append('user', request.text)
     const turns: ChatTurn[] = [
       { role: 'system', content: `${SYSTEM_PROMPT}\n\n${TOOL_PROTOCOL_INSTRUCTIONS}` },
-      ...memory.recent().map((m) => ({ role: m.role, content: m.content }) as ChatTurn)
+      ...memory.recent().map((m) => ({ role: m.role, content: truncate(m.content) }) as ChatTurn)
     ]
 
     void streamResponse(router, memory, registry, turns, controller, emit, request.text)
@@ -122,7 +127,7 @@ export function registerChatIpc(
     memory.append('user', report)
     const turns: ChatTurn[] = [
       { role: 'system', content: `${SYSTEM_PROMPT}\n\n${TOOL_PROTOCOL_INSTRUCTIONS}` },
-      ...memory.recent().map((m) => ({ role: m.role, content: m.content }) as ChatTurn)
+      ...memory.recent().map((m) => ({ role: m.role, content: truncate(m.content) }) as ChatTurn)
     ]
     const controller = new AbortController()
     active = controller
@@ -306,7 +311,9 @@ async function streamResponse(
         retriedSmall = true
         turns.length = 1
         turns.push(
-          ...memory.recent(10).map((m) => ({ role: m.role, content: m.content }) as ChatTurn)
+          ...memory
+            .recent(6)
+            .map((m) => ({ role: m.role, content: truncate(m.content) }) as ChatTurn)
         )
         continue
       }
