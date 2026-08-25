@@ -70,18 +70,22 @@ export function App() {
     voiceRef.current.toggle()
   }, [])
   const wake = useWakeWord({ enabled: wakeEnabled, onWake: handleWake })
+  const wakeRef = useRef(wake)
+  wakeRef.current = wake
+  const wakeStatusRef = useRef(wake.status)
+  wakeStatusRef.current = wake.status
 
   useEffect(() => {
     if (!wakeEnabled) return
     if (voice.recording || speaking) {
-      wake.suspend()
-    } else if (wake.status === 'suspended') {
-      wake.resume()
-    } else if (wake.status === 'error') {
+      wakeRef.current.suspend()
+    } else if (wakeStatusRef.current === 'suspended') {
+      wakeRef.current.resume()
+    } else if (wakeStatusRef.current === 'error') {
       setWakeEnabled(false)
       setTimeout(() => setWakeEnabled(true), 1000)
     }
-  }, [voice.recording, speaking, wakeEnabled, wake])
+  }, [voice.recording, speaking, wakeEnabled])
 
   const toggleWake = (): void => {
     setWakeEnabled((prev) => {
