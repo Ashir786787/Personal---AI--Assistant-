@@ -1,4 +1,10 @@
-export const WAKE_PHRASES = ['jarvis', 'hey dude', 'hey ashirs ai', 'hey ashirs'] as const
+export const WAKE_PHRASES = [
+  'hey jarvis',
+  'hey dude',
+  'hey ashirs ai',
+  'hey ashirs',
+  'jarvis'
+] as const
 
 const PUNCTUATION_RE = /[^a-z\s]/g
 

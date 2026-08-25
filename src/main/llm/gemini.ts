@@ -27,7 +27,7 @@ function buildBody(request: StreamRequest): string {
     ...(systemParts.length > 0 && {
       systemInstruction: { parts: [{ text: systemParts.join('\n\n') }] }
     }),
-    generationConfig: { temperature: 0.7 }
+    generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
   })
 }
 

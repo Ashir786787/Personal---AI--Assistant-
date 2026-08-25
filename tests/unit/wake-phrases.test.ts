@@ -14,6 +14,7 @@ describe('normalizeForWake', () => {
 describe('matchesWakePhrase', () => {
   it('matches exact phrases', () => {
     expect(matchesWakePhrase('jarvis')).toBe('jarvis')
+    expect(matchesWakePhrase('hey jarvis')).toBe('hey jarvis')
     expect(matchesWakePhrase('hey dude')).toBe('hey dude')
     expect(matchesWakePhrase('hey ashirs ai')).toBe('hey ashirs ai')
     expect(matchesWakePhrase('hey ashirs')).toBe('hey ashirs')

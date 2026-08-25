@@ -32,7 +32,8 @@ export function createGroqProvider(model = PROVIDER_MODELS.groq.id): LlmProvider
             model,
             messages: toMessages(request.turns),
             stream: true,
-            temperature: 0.7
+            temperature: 0.7,
+            max_tokens: 8192
           }),
           signal: request.signal
         })
