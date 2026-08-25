@@ -29,9 +29,11 @@ type CircuitId = 'memory' | 'skills' | 'soul' | 'settings' | null
 
 export function App() {
   const { messages, busy, send } = useChat()
+  const busyRef = useRef(busy)
+  busyRef.current = busy
   const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem(TTS_STORAGE_KEY) === '1')
   const [draft, setDraft] = useState('')
-  const { speak, stop } = useSpeech(ttsEnabled)
+  const { speak, stop, speaking } = useSpeech(ttsEnabled)
   const { proposal, busy: deciding, outcome, decide, dismissOutcome } = useProposals()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [circuit, setCircuit] = useState<CircuitId>(null)
@@ -41,17 +43,23 @@ export function App() {
   const { status: updateStatus, check, install } = useUpdater()
   const updateBadge = updateLabel(updateStatus)
 
-  const handleTranscript = useCallback((text: string): void => {
-    setDraft(text)
-    setView('core')
-  }, [])
+  const handleTranscript = useCallback(
+    (text: string): void => {
+      setView('core')
+      if (busyRef.current) {
+        setDraft(text)
+        return
+      }
+      setDraft('')
+      void send(text)
+    },
+    [send]
+  )
   const handleInterim = useCallback((text: string): void => {
     setDraft(text)
   }, [])
   const voice = useVoiceRecorder({ onFinal: handleTranscript, onInterim: handleInterim })
 
-  const busyRef = useRef(busy)
-  busyRef.current = busy
   const voiceRef = useRef(voice)
   voiceRef.current = voice
 
@@ -65,12 +73,14 @@ export function App() {
 
   useEffect(() => {
     if (!wakeEnabled) return
-    if (voice.recording) {
+    if (voice.recording || speaking) {
+      // don't listen while the user dictates or while Jarvis speaks
+      // (otherwise the speaker output can re-trigger the wake phrase)
       wake.suspend()
     } else if (wake.status === 'suspended') {
       wake.resume()
     }
-  }, [voice.recording, wakeEnabled, wake])
+  }, [voice.recording, speaking, wakeEnabled, wake])
 
   const toggleWake = (): void => {
     setWakeEnabled((prev) => {

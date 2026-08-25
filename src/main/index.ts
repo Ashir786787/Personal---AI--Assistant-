@@ -169,7 +169,9 @@ if (!gotLock) {
 
     const mainWindow = createMainWindow()
 
-    const router = new ProviderRouter([createGeminiProvider(), createGroqProvider()], 'gemini')
+    // Groq first: dramatically faster responses. Gemini stays as automatic
+    // fallback when Groq hits its free-tier rate limit (router cooldowns).
+    const router = new ProviderRouter([createGeminiProvider(), createGroqProvider()], 'groq')
     const memory = new ConversationMemory(
       join(app.getPath('userData'), 'memory.json'),
       createDpapiCipher()

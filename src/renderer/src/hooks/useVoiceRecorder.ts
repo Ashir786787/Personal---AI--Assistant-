@@ -15,6 +15,12 @@ const INTERIM_INTERVAL_MS = 3000
 const MIN_INTERIM_BYTES = 4096
 const MIN_FINAL_BYTES = 2048
 
+// Hands-free end-of-speech detection: once real speech was heard, this much
+// continuous silence finishes the recording automatically.
+const SILENCE_STOP_MS = 1400
+const SPEECH_LEVEL = 0.12
+const MAX_RECORDING_MS = 45000
+
 function pickMimeType(): string {
   if (typeof MediaRecorder === 'undefined') return 'audio/webm'
   if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus'
@@ -27,6 +33,9 @@ export function useVoiceRecorder(hooks: RecorderHooks): RecorderState & { toggle
   const ctxRef = useRef<AudioContext | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const rafRef = useRef(0)
+  const startedAtRef = useRef(0)
+  const lastVoiceAtRef = useRef(0)
+  const speechSeenRef = useRef(false)
   const hooksRef = useRef(hooks)
   hooksRef.current = hooks
 
@@ -75,6 +84,9 @@ export function useVoiceRecorder(hooks: RecorderHooks): RecorderState & { toggle
     ctx.createMediaStreamSource(stream).connect(analyser)
 
     const data = new Uint8Array(analyser.frequencyBinCount)
+    startedAtRef.current = performance.now()
+    lastVoiceAtRef.current = startedAtRef.current
+    speechSeenRef.current = false
     const tick = (): void => {
       analyser.getByteTimeDomainData(data)
       let sum = 0
@@ -82,9 +94,21 @@ export function useVoiceRecorder(hooks: RecorderHooks): RecorderState & { toggle
         const deviation = (data[i]! - 128) / 128
         sum += deviation * deviation
       }
-      setState((prev) =>
-        prev.recording ? { ...prev, level: Math.min(1, Math.sqrt(sum / data.length) * 3.5) } : prev
-      )
+      const level = Math.min(1, Math.sqrt(sum / data.length) * 3.5)
+      const now = performance.now()
+      if (level >= SPEECH_LEVEL) {
+        speechSeenRef.current = true
+        lastVoiceAtRef.current = now
+      }
+      if (
+        recorderRef.current &&
+        ((speechSeenRef.current && now - lastVoiceAtRef.current > SILENCE_STOP_MS) ||
+          now - startedAtRef.current > MAX_RECORDING_MS)
+      ) {
+        recorderRef.current.stop()
+        return
+      }
+      setState((prev) => (prev.recording ? { ...prev, level } : prev))
       rafRef.current = requestAnimationFrame(tick)
     }
     rafRef.current = requestAnimationFrame(tick)
@@ -135,7 +159,7 @@ export function useVoiceRecorder(hooks: RecorderHooks): RecorderState & { toggle
         setState({
           recording: false,
           level: 0,
-          error: 'That came out as silence — hold the mic button while you speak'
+          error: "I didn't catch any words — try speaking a little closer to the mic"
         })
         return
       }

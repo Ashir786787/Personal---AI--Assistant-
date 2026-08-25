@@ -49,16 +49,12 @@ describe('ProviderRouter', () => {
     }
   })
 
-  it('balances load across providers within the usage window', () => {
-    const router = new ProviderRouter([fakeProvider('gemini'), fakeProvider('groq')], 'gemini')
+  it('stays on the preferred provider until it is rate-limited', () => {
+    const router = new ProviderRouter([fakeProvider('gemini'), fakeProvider('groq')], 'groq')
 
-    const first = router.pick(1000)
-    const second = router.pick(1100)
-    const third = router.pick(1200)
-
-    expect(first.id).toBe('gemini')
-    expect(second.id).toBe('groq')
-    expect(third.id).toBe('gemini')
+    expect(router.pick(1000).id).toBe('groq')
+    expect(router.pick(1100).id).toBe('groq')
+    expect(router.pick(1200).id).toBe('groq')
   })
 
   it('excludes a rate-limited provider until its cooldown expires', () => {

@@ -2,13 +2,12 @@ import type { ProviderId } from '@shared/providers'
 import { ProviderError } from './errors'
 import type { LlmProvider } from './provider'
 
-const USAGE_WINDOW_MS = 60_000
-
 export class ProviderRouter {
   private readonly providers: Map<ProviderId, LlmProvider>
+  // Preference order: primary first, fallbacks after. Sticky by design so
+  // responses stay on the fast provider until it rate-limits or fails.
   private readonly order: ProviderId[]
   private readonly cooldownUntil = new Map<ProviderId, number>()
-  private readonly usageTimestamps = new Map<ProviderId, number[]>()
 
   constructor(providers: LlmProvider[], preferred: ProviderId) {
     this.providers = new Map(providers.map((p) => [p.id, p]))
@@ -41,9 +40,7 @@ export class ProviderRouter {
       )
     }
 
-    const leastUsed = [...usable].sort((a, b) => this.usageCount(a, now) - this.usageCount(b, now))
-    const chosen = leastUsed[0] as ProviderId
-    this.recordUsage(chosen, now)
+    const chosen = usable[0] as ProviderId
     return this.providers.get(chosen)!
   }
 
@@ -53,17 +50,5 @@ export class ProviderRouter {
 
   markRateLimited(id: ProviderId, retryAfterMs = 30_000, now = Date.now()): void {
     this.cooldownUntil.set(id, now + retryAfterMs)
-  }
-
-  private usageCount(id: ProviderId, now: number): number {
-    const stamps = (this.usageTimestamps.get(id) ?? []).filter((t) => now - t < USAGE_WINDOW_MS)
-    this.usageTimestamps.set(id, stamps)
-    return stamps.length
-  }
-
-  private recordUsage(id: ProviderId, now: number): void {
-    const stamps = this.usageTimestamps.get(id) ?? []
-    stamps.push(now)
-    this.usageTimestamps.set(id, stamps)
   }
 }
