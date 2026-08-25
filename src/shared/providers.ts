@@ -7,5 +7,5 @@ export interface ModelInfo {
 
 export const PROVIDER_MODELS: Record<ProviderId, ModelInfo> = {
   gemini: { id: 'gemini-flash-latest', label: 'Gemini Flash' },
-  groq: { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (Groq)' }
+  groq: { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B (Groq)' }
 }
