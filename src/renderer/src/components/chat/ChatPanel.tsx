@@ -6,6 +6,7 @@ import { ChatInput } from './ChatInput'
 interface ChatPanelProps {
   messages: UiMessage[]
   busy: boolean
+  powered: boolean
   value: string
   onValueChange: (value: string) => void
   ttsEnabled: boolean
@@ -21,6 +22,7 @@ interface ChatPanelProps {
 export function ChatPanel({
   messages,
   busy,
+  powered,
   value,
   onValueChange,
   ttsEnabled,
@@ -99,6 +101,7 @@ export function ChatPanel({
         value={value}
         onValueChange={onValueChange}
         busy={busy}
+        powered={powered}
         ttsEnabled={ttsEnabled}
         micListening={micListening}
         micLevel={micLevel}

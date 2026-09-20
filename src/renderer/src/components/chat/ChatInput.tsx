@@ -5,6 +5,7 @@ interface ChatInputProps {
   value: string
   onValueChange: (value: string) => void
   busy: boolean
+  powered: boolean
   ttsEnabled: boolean
   micListening: boolean
   micLevel: number
@@ -18,6 +19,7 @@ export function ChatInput({
   value,
   onValueChange,
   busy,
+  powered,
   ttsEnabled,
   micListening,
   micLevel,
@@ -46,18 +48,24 @@ export function ChatInput({
   return (
     <div className="border-t border-edge bg-panel px-4 py-3">
       {voiceNotice && <p className="mb-2 font-mono text-[11px] text-warning">{voiceNotice}</p>}
+      {!powered && (
+        <p className="mb-2 font-mono text-[11px] text-ink-muted">
+          AI is off — press Start AI on the Core view to begin.
+        </p>
+      )}
       <div className="flex items-end gap-2">
         <MicButton
           level={micLevel}
           listening={micListening}
-          disabled={busy}
+          disabled={busy || !powered}
           onToggle={onToggleMic}
         />
         <textarea
           ref={textareaRef}
           rows={1}
           value={value}
-          placeholder="Message ASHIR's AI…"
+          disabled={!powered}
+          placeholder={powered ? "Message ASHIR's AI…" : 'Start AI to begin…'}
           onChange={(e) => resize(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -65,7 +73,7 @@ export function ChatInput({
               submit()
             }
           }}
-          className="max-h-40 flex-1 resize-none rounded-xl border border-edge bg-base px-4 py-2.5 text-sm text-ink placeholder:text-ink-muted/60 focus:border-accent-dim focus:outline-none"
+          className="max-h-40 flex-1 resize-none rounded-xl border border-edge bg-base px-4 py-2.5 text-sm text-ink placeholder:text-ink-muted/60 focus:border-accent-dim focus:outline-none disabled:opacity-60"
         />
         <button
           type="button"
@@ -98,7 +106,7 @@ export function ChatInput({
         <button
           type="button"
           onClick={submit}
-          disabled={busy || value.trim().length === 0}
+          disabled={busy || !powered || value.trim().length === 0}
           aria-label="Send message"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-base transition-opacity duration-fast hover:opacity-90 disabled:opacity-30"
         >

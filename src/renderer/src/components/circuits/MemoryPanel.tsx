@@ -19,53 +19,39 @@ export function MemoryPanel({ onClose }: Props): JSX.Element {
   }, [])
 
   return (
-    <div className="confirm-backdrop" onClick={onClose}>
-      <div
-        className="confirm-card"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Memory circuit"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="confirm-header">
-          <span className="circuit-glyph-lg text-accent">❖</span>
-          <h2>Memory Circuit</h2>
-          <p className="confirm-sub">
-            Everything here lives on this machine only. Deeper memory — facts, habits, routines —
-            comes online in the next phase.
-          </p>
-        </div>
+    <div className="space-y-3">
+      <p className="text-sm leading-relaxed text-ink-muted">
+        Everything here lives on this machine only. Deeper memory — facts, habits, routines — comes
+        online in the next phase.
+      </p>
 
-        <div className="settings-body">
-          <div className="memory-stat-row">
-            <div>
-              <strong>{summary ? summary.messageCount : '—'}</strong>
-              <span>messages remembered</span>
-            </div>
-            <div>
-              <strong>
-                {summary?.oldestAt ? new Date(summary.oldestAt).toLocaleDateString() : '—'}
-              </strong>
-              <span>first contact</span>
-            </div>
-          </div>
-
-          {SLOTS.map((slot) => (
-            <div key={slot.title} className="memory-card">
-              <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-ink-muted">
-                {slot.title}
-              </span>
-              <p className="text-sm font-medium text-ink">{slot.value}</p>
-              <p className="text-xs text-ink-muted">{slot.note}</p>
-            </div>
-          ))}
+      <div className="memory-stat-row">
+        <div>
+          <strong>{summary ? summary.messageCount : '—'}</strong>
+          <span>messages remembered</span>
         </div>
-
-        <div className="confirm-actions">
-          <button className="btn-cancel" onClick={onClose}>
-            Close
-          </button>
+        <div>
+          <strong>
+            {summary?.oldestAt ? new Date(summary.oldestAt).toLocaleDateString() : '—'}
+          </strong>
+          <span>first contact</span>
         </div>
+      </div>
+
+      {SLOTS.map((slot) => (
+        <div key={slot.title} className="memory-card">
+          <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-ink-muted">
+            {slot.title}
+          </span>
+          <p className="text-sm font-medium text-ink">{slot.value}</p>
+          <p className="text-xs text-ink-muted">{slot.note}</p>
+        </div>
+      ))}
+
+      <div className="flex justify-end pt-2">
+        <button className="btn-cancel" onClick={onClose}>
+          Close
+        </button>
       </div>
     </div>
   )

@@ -3,9 +3,11 @@ import type { ProviderId } from '@shared/providers'
 import type { StatusSnapshot } from '@shared/ipc'
 import { THEME_ACCENT, type ThemeId } from '../../theme'
 import type { WakeStatus } from '../../hooks/useWakeWord'
+import type { PowerStatus } from '../../state/powerState'
 
 interface StatusBarProps {
   micState: 'idle' | 'listening' | 'denied'
+  power: PowerStatus
   lastProvider: ProviderId | null
   busy: boolean
   theme: ThemeId
@@ -14,12 +16,14 @@ interface StatusBarProps {
   onCycleTheme: () => void
   onOpenSettings: () => void
   onUpdateOpen: () => void
+  onPowerToggle: () => void
 }
 
 const HEALTH_POLL_MS = 5000
 
 export function StatusBar({
   micState,
+  power,
   lastProvider,
   busy,
   theme,
@@ -27,7 +31,8 @@ export function StatusBar({
   wakeStatus,
   onCycleTheme,
   onOpenSettings,
-  onUpdateOpen
+  onUpdateOpen,
+  onPowerToggle
 }: StatusBarProps) {
   const [snapshot, setSnapshot] = useState<StatusSnapshot | null>(null)
 
@@ -103,6 +108,22 @@ export function StatusBar({
           <span className={`h-1.5 w-1.5 rounded-full ${healthTone}`} />
           {healthText}
         </span>
+        <button
+          className="theme-pill"
+          title={
+            power === 'off'
+              ? 'AI is off — start it to chat'
+              : 'Master power switch — click to stop AI'
+          }
+          onClick={onPowerToggle}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              power === 'off' ? 'bg-warning' : 'bg-accent animate-pulse'
+            }`}
+          />
+          AI {power === 'off' ? 'OFF' : 'ON'}
+        </button>
         {wakeStatus && wakeStatus !== 'off' && (
           <span
             className="flex items-center gap-1.5"
