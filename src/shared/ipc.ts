@@ -1,4 +1,5 @@
 import type { SendChatRequest, SendChatResponse, StreamEvent } from './chat'
+import type { ProviderId } from './providers'
 
 export const IPC = {
   chatSend: 'chat:send',
@@ -44,6 +45,7 @@ export type UpdateStatus =
   | { status: 'idle' }
   | { status: 'checking' }
   | { status: 'not-available' }
+  | { status: 'dev' }
   | { status: 'available'; version: string }
   | { status: 'downloading'; percent: number }
   | { status: 'ready'; version: string }
@@ -77,6 +79,15 @@ export interface WakeModelStateInfo {
   url?: string
 }
 
+// Real provider status for the top bar (spec 4.1). "cooling" means the router
+// rate-limited it and is backing off; nothing here is estimated.
+export type ProviderHealth = { id: ProviderId; state: 'ok' | 'cooling' }
+
+export interface StatusSnapshot {
+  providers: ProviderHealth[]
+  agents: { working: number; total: number }
+}
+
 export interface AshirsBridge {
   sendChat(request: SendChatRequest): Promise<SendChatResponse>
   cancelChat(): void
@@ -94,6 +105,7 @@ export interface AshirsBridge {
   listSkills(): Promise<SkillEntry[]>
   systemStats(): Promise<SystemStats>
   memorySummary(): Promise<MemorySummary>
+  getStatusSnapshot(): Promise<StatusSnapshot>
   getWakeModelState(): Promise<WakeModelStateInfo>
   startWakeModelDownload(): Promise<void>
   onWakeModelProgress(listener: (info: WakeModelStateInfo) => void): () => void

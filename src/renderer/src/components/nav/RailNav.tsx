@@ -5,11 +5,11 @@ interface RailNavProps {
   onChange: (view: ViewId) => void
 }
 
-const ITEMS: Array<{ id: ViewId; glyph: string; label: string }> = [
-  { id: 'core', glyph: '◉', label: 'Core' },
-  { id: 'agents', glyph: '⌗', label: 'Agent Town' },
-  { id: 'world', glyph: '◍', label: 'World Monitor' },
-  { id: 'system', glyph: '▤', label: 'System' }
+const ITEMS: Array<{ id: ViewId; glyph: string; label: string; tooltip: string }> = [
+  { id: 'core', glyph: '◉', label: 'Core', tooltip: 'Core' },
+  { id: 'agents', glyph: '⌗', label: 'Town', tooltip: 'Agent Town' },
+  { id: 'world', glyph: '◍', label: 'World', tooltip: 'World Monitor' },
+  { id: 'system', glyph: '▤', label: 'System', tooltip: 'System' }
 ]
 
 export function RailNav({ view, onChange }: RailNavProps): JSX.Element {
@@ -20,17 +20,17 @@ export function RailNav({ view, onChange }: RailNavProps): JSX.Element {
           <button
             key={item.id}
             className={`rail-btn ${view === item.id ? 'rail-btn-active' : ''}`}
-            title={item.label}
-            aria-label={item.label}
+            title={item.tooltip}
+            aria-label={item.tooltip}
             aria-current={view === item.id ? 'page' : undefined}
             onClick={() => onChange(item.id)}
           >
-            <span className="text-base leading-none">{item.glyph}</span>
+            <span className="rail-glyph">{item.glyph}</span>
             <span className="rail-label">{item.label}</span>
           </button>
         ))}
       </div>
-      <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted opacity-50">
+      <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-muted opacity-50">
         ASHIR
       </div>
     </nav>

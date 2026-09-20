@@ -16,7 +16,10 @@ function stagedFiles() {
   const out = execSync('git diff --cached --name-only --diff-filter=ACM', {
     encoding: 'utf8'
   })
-  return out.split('\n').map((f) => f.trim()).filter(Boolean)
+  return out
+    .split('\n')
+    .map((f) => f.trim())
+    .filter(Boolean)
 }
 
 function findSecret(content) {

@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs'
 
 config()
 
-const key = readFileSync('.env', 'utf8').match(/GEMINI_API_KEY=(.*)/)?.[1]?.trim()
+const key = readFileSync('.env', 'utf8')
+  .match(/GEMINI_API_KEY=(.*)/)?.[1]
+  ?.trim()
 if (!key) {
   console.error('No GEMINI_API_KEY in .env')
   process.exit(1)
@@ -16,7 +18,9 @@ const response = await fetch(
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: "You are ASHIR's AI. Reply in exactly one short sentence." }] },
+      systemInstruction: {
+        parts: [{ text: "You are ASHIR's AI. Reply in exactly one short sentence." }]
+      },
       contents: [{ role: 'user', parts: [{ text: 'Say hello to Ashir.' }] }],
       generationConfig: { temperature: 0.7 }
     })
@@ -46,8 +50,7 @@ while (true) {
     if (line.startsWith('data:')) {
       try {
         const chunk = JSON.parse(line.slice(5))
-        const delta =
-          chunk.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
+        const delta = chunk.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
         text += delta
         process.stdout.write(delta)
       } catch {

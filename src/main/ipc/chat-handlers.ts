@@ -1,5 +1,5 @@
 import { ipcMain, type WebContents } from 'electron'
-import { IPC } from '@shared/ipc'
+import { IPC, type StatusSnapshot } from '@shared/ipc'
 import type { SendChatRequest, StreamEvent } from '@shared/chat'
 import type { ProviderId } from '@shared/providers'
 import { TOOL_PROTOCOL_INSTRUCTIONS } from '@shared/tools'
@@ -58,6 +58,11 @@ export function registerChatIpc(
   const emit = (event: StreamEvent): void => {
     if (!webContents.isDestroyed()) webContents.send(IPC.chatStream, event)
   }
+
+  ipcMain.handle(IPC.statusSnapshot, (): StatusSnapshot => ({
+    providers: router.health(),
+    agents: { working: 0, total: 4 }
+  }))
 
   ipcMain.handle(IPC.chatSend, async (_event, raw: unknown) => {
     const request = parseRequest(raw)

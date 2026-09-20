@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs'
 
 config()
 
-const key = readFileSync('.env', 'utf8').match(/GROQ_API_KEY=(.*)/)?.[1]?.trim()
+const key = readFileSync('.env', 'utf8')
+  .match(/GROQ_API_KEY=(.*)/)?.[1]
+  ?.trim()
 if (!key) {
   console.error('No GROQ_API_KEY in .env')
   process.exit(1)

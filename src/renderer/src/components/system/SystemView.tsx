@@ -33,7 +33,7 @@ function Gauge({
         </div>
       </div>
       <div className="text-center">
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">{label}</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-accent">{label}</p>
         {detail && <p className="mt-1 text-xs text-ink-muted">{detail}</p>}
       </div>
     </div>

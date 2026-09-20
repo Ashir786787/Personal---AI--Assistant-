@@ -10,7 +10,10 @@ module.exports = {
         edge: 'rgb(var(--c-edge) / <alpha-value>)',
         accent: 'rgb(var(--c-accent) / <alpha-value>)',
         'accent-dim': 'rgb(var(--c-accent-dim) / <alpha-value>)',
-        warning: '#FFB347',
+        ok: 'rgb(var(--c-ok) / <alpha-value>)',
+        warn: 'rgb(var(--c-warn) / <alpha-value>)',
+        warning: 'rgb(var(--c-warn) / <alpha-value>)',
+        danger: 'rgb(var(--c-danger) / <alpha-value>)',
         ink: 'rgb(var(--c-ink) / <alpha-value>)',
         'ink-muted': 'rgb(var(--c-ink-muted) / <alpha-value>)'
       },

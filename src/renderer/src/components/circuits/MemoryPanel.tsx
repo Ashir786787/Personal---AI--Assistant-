@@ -52,7 +52,7 @@ export function MemoryPanel({ onClose }: Props): JSX.Element {
 
           {SLOTS.map((slot) => (
             <div key={slot.title} className="memory-card">
-              <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-muted">
+              <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-ink-muted">
                 {slot.title}
               </span>
               <p className="text-sm font-medium text-ink">{slot.value}</p>

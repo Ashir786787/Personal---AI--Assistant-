@@ -76,7 +76,7 @@ export function SoulPanel({ onClose }: Props): JSX.Element {
             const val = values[trait.key] ?? 50
             return (
               <div key={trait.key} className="soul-row">
-                <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-muted">
+                <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-ink-muted">
                   {trait.label}
                 </span>
                 <input
@@ -90,7 +90,7 @@ export function SoulPanel({ onClose }: Props): JSX.Element {
                   className="soul-slider"
                   aria-label={trait.label}
                 />
-                <span className="w-14 text-right font-mono text-[10px] text-ink-muted">
+                <span className="w-14 text-right font-mono text-[11px] text-ink-muted">
                   {val < 34 ? trait.low : val > 66 ? trait.high : 'balanced'}
                 </span>
               </div>

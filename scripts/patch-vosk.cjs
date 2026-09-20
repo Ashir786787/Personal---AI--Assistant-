@@ -15,7 +15,7 @@ const path = require('node:path')
 
 const NEEDLE =
   'new Function("body","return function "+name+"() {\\n"+' +
-  "'    \"use strict\";'+" +
+  '\'    "use strict";\'+' +
   '"    return body.apply(this, arguments);\\n"+' +
   '"};\\n")(body)'
 const REPL =
@@ -63,7 +63,9 @@ if (start >= 0) {
         src = src.slice(0, from) + encoded + src.slice(to)
       }
     } else {
-      console.error('patch-vosk: unexpected characters in worker payload — aborting without changes')
+      console.error(
+        'patch-vosk: unexpected characters in worker payload — aborting without changes'
+      )
     }
   }
 }
@@ -113,7 +115,9 @@ if (mStart < 0) {
   fs.writeFileSync(WORKER_OUT, inner.src)
   src = src.slice(0, mStart) + OUT_SHIM + src.slice(to + terminator.length)
   fs.writeFileSync(file, src)
-  console.log(`patch-vosk: emitted ${path.basename(WORKER_OUT)} (${Math.round(inner.src.length / 1_000_000)} MB)`)
+  console.log(
+    `patch-vosk: emitted ${path.basename(WORKER_OUT)} (${Math.round(inner.src.length / 1_000_000)} MB)`
+  )
   console.log('patch-vosk: worker creation redirected to vosk-worker:// protocol')
 }
 

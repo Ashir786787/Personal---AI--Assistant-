@@ -204,7 +204,7 @@ export function AgentTown({ theme, activity }: TownProps): JSX.Element {
   return (
     <div className="relative h-full w-full overflow-hidden">
       <canvas ref={canvasRef} aria-label="Agent town" />
-      <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 font-mono text-[9px] uppercase tracking-[0.3em] text-ink-muted opacity-60">
+      <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 font-mono text-[11px] uppercase tracking-[0.3em] text-ink-muted opacity-60">
         Agent Town · four helpers at their desks
       </div>
     </div>

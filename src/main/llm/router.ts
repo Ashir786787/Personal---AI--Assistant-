@@ -1,4 +1,5 @@
 import type { ProviderId } from '@shared/providers'
+import type { ProviderHealth } from '@shared/ipc'
 import { ProviderError } from './errors'
 import type { LlmProvider } from './provider'
 
@@ -50,5 +51,12 @@ export class ProviderRouter {
 
   markRateLimited(id: ProviderId, retryAfterMs = 30_000, now = Date.now()): void {
     this.cooldownUntil.set(id, now + retryAfterMs)
+  }
+
+  health(now = Date.now()): ProviderHealth[] {
+    return this.order.map((id) => ({
+      id,
+      state: (this.cooldownUntil.get(id) ?? 0) > now ? 'cooling' : 'ok'
+    }))
   }
 }

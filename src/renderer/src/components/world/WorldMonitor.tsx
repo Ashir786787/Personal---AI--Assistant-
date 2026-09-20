@@ -46,7 +46,7 @@ export function WorldMonitor(): JSX.Element {
       <div className="grid grid-cols-5 gap-3">
         {ZONES.map((zone) => (
           <div key={zone.label} className="world-clock">
-            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">
+            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-muted">
               {zone.label}
             </span>
             <strong>{clockFor(zone.offsetHours)}</strong>
@@ -56,7 +56,7 @@ export function WorldMonitor(): JSX.Element {
 
       <div className="glass min-h-0 flex-1 overflow-y-auto rounded-xl p-4" key={tick}>
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-muted">
+          <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-ink-muted">
             Headlines feed
           </span>
           <span className="update-pill opacity-70">

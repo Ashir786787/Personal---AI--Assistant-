@@ -6,6 +6,7 @@ import type {
   MemorySummary,
   ProviderKeyStatus,
   SkillEntry,
+  StatusSnapshot,
   SystemStats,
   UpdateStatus,
   VoiceRecording,
@@ -47,6 +48,7 @@ const bridge: AshirsBridge = {
   listSkills: () => ipcRenderer.invoke(IPC.toolsList) as Promise<SkillEntry[]>,
   systemStats: () => ipcRenderer.invoke(IPC.systemStats) as Promise<SystemStats>,
   memorySummary: () => ipcRenderer.invoke(IPC.memorySummary) as Promise<MemorySummary>,
+  getStatusSnapshot: () => ipcRenderer.invoke(IPC.statusSnapshot) as Promise<StatusSnapshot>,
   getWakeModelState: () => ipcRenderer.invoke(IPC.wakeModelState) as Promise<WakeModelStateInfo>,
   startWakeModelDownload: () => ipcRenderer.invoke(IPC.wakeModelStart) as Promise<void>,
   onWakeModelProgress: (listener: (info: WakeModelStateInfo) => void) => {

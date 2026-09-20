@@ -12,12 +12,13 @@ export function MessageList({ messages }: { messages: UiMessage[] }) {
   if (messages.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-        <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent-dim">
+        <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-accent-dim">
           System online
         </div>
         <h1 className="text-2xl font-medium text-ink">Say hello, Ashir.</h1>
         <p className="max-w-xs text-sm text-ink-muted">
-          Type a message below or tap the mic to speak. Your conversations never leave this machine.
+          Type a message below or tap the mic to speak. Your chat history is stored encrypted on
+          this computer. Messages you send are processed by your chosen AI provider.
         </p>
       </div>
     )

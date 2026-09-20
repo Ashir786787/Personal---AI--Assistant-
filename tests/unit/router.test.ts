@@ -85,4 +85,26 @@ describe('ProviderRouter', () => {
     const router = new ProviderRouter([fakeProvider('gemini'), fakeProvider('groq')], 'groq')
     expect(router.count).toBe(2)
   })
+
+  it('reports every provider as ok when none is cooling', () => {
+    const router = new ProviderRouter([fakeProvider('gemini'), fakeProvider('groq')], 'groq')
+    const health = router.health(5000)
+    expect(health).toHaveLength(2)
+    expect(health.find((p) => p.id === 'gemini')?.state).toBe('ok')
+    expect(health.find((p) => p.id === 'groq')?.state).toBe('ok')
+  })
+
+  it('marks a provider cooling while its cooldown window is active', () => {
+    const router = new ProviderRouter([fakeProvider('gemini'), fakeProvider('groq')], 'gemini')
+    router.markRateLimited('groq', 30_000, 4000)
+    const health = router.health(20_000)
+    expect(health.find((p) => p.id === 'gemini')?.state).toBe('ok')
+    expect(health.find((p) => p.id === 'groq')?.state).toBe('cooling')
+  })
+
+  it('returns a provider to ok after its cooldown expires', () => {
+    const router = new ProviderRouter([fakeProvider('gemini'), fakeProvider('groq')], 'gemini')
+    router.markRateLimited('groq', 30_000, 4000)
+    expect(router.health(40_000).find((p) => p.id === 'groq')?.state).toBe('ok')
+  })
 })

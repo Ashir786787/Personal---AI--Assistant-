@@ -22,7 +22,11 @@ export function initAutoUpdater(webContents: WebContents): UpdateController {
     }
     if (status.status === 'error') {
       log('warn', 'update', status.message)
-    } else if (status.status !== 'idle' && status.status !== 'checking') {
+    } else if (
+      status.status !== 'idle' &&
+      status.status !== 'checking' &&
+      status.status !== 'dev'
+    ) {
       log('info', 'update', `status=${status.status}`)
     }
   }
@@ -51,14 +55,22 @@ export function initAutoUpdater(webContents: WebContents): UpdateController {
     })
   )
 
-  ipcMain.handle(IPC.updateCheck, () => {
+  const check = (): void => {
+    if (!app.isPackaged) {
+      emit({ status: 'dev' })
+      return
+    }
     void autoUpdater.checkForUpdates().catch(() => {
       /* error event already reports */
     })
+  }
+
+  ipcMain.handle(IPC.updateCheck, () => {
+    check()
   })
   ipcMain.handle(IPC.updateVersion, () => app.getVersion())
   ipcMain.handle(IPC.updateInstall, () => {
-    autoUpdater.quitAndInstall(false, true)
+    if (app.isPackaged) autoUpdater.quitAndInstall(false, true)
   })
 
   // initial snapshot for late-mounting renderer
@@ -82,11 +94,9 @@ export function initAutoUpdater(webContents: WebContents): UpdateController {
   }
 
   return {
-    check: () => {
-      void autoUpdater.checkForUpdates().catch(() => {
-        /* handled by error event */
-      })
-    },
-    install: () => autoUpdater.quitAndInstall(false, true)
+    check,
+    install: () => {
+      if (app.isPackaged) autoUpdater.quitAndInstall(false, true)
+    }
   }
 }

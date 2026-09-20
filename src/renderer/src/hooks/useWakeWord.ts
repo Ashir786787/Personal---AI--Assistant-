@@ -58,7 +58,7 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
   const generationRef = useRef(0)
   const hooksRef = useRef(onWake)
   hooksRef.current = onWake
-  const healthRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const healthRef = useRef<number | null>(null)
 
   const teardown = useCallback((): void => {
     generationRef.current += 1

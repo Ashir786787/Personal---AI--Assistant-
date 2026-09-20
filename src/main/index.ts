@@ -58,9 +58,9 @@ function createMainWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
     width: 1100,
     height: 720,
-    minWidth: 820,
-    minHeight: 560,
-    backgroundColor: '#0A0E12',
+    minWidth: 1000,
+    minHeight: 640,
+    backgroundColor: '#070b0f',
     title: "ASHIR's AI",
     show: false,
     autoHideMenuBar: true,

@@ -36,7 +36,7 @@ export function MessageBubble({ message }: { message: UiMessage }) {
       ) : (
         <div className={`max-w-[78%] ${isError ? 'w-auto' : ''}`}>
           {!isUser && !isError && (
-            <div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            <div className="mb-1 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
               Ashir&apos;s AI{providerLabel ? ` · ${providerLabel}` : ''}
             </div>
           )}

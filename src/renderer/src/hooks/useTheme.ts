@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { isThemeId, THEME_IDS, type ThemeId } from '../theme'
+import { DEFAULT_THEME, isThemeId, THEME_IDS, type ThemeId } from '../theme'
 
 const STORAGE_KEY = 'ashirs.theme'
 
@@ -10,7 +10,7 @@ export function useTheme(): {
 } {
   const [theme, setThemeState] = useState<ThemeId>(() => {
     const stored = localStorage.getItem(STORAGE_KEY)
-    return isThemeId(stored) ? stored : 'ion'
+    return isThemeId(stored) ? stored : DEFAULT_THEME
   })
 
   useEffect(() => {
@@ -23,7 +23,9 @@ export function useTheme(): {
   }, [])
 
   const cycleTheme = useCallback((): void => {
-    setThemeState((prev) => THEME_IDS[(THEME_IDS.indexOf(prev) + 1) % THEME_IDS.length] ?? 'ion')
+    setThemeState(
+      (prev) => THEME_IDS[(THEME_IDS.indexOf(prev) + 1) % THEME_IDS.length] ?? DEFAULT_THEME
+    )
   }, [])
 
   return { theme, setTheme, cycleTheme }

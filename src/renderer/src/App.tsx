@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { StatusBar } from './components/status/StatusBar'
-import { MessageList } from './components/chat/MessageList'
-import { ChatInput } from './components/chat/ChatInput'
+import { ChatPanel } from './components/chat/ChatPanel'
 import { ConfirmationModal } from './components/confirm/ConfirmationModal'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { Starfield } from './components/ambient/Starfield'
@@ -110,6 +109,17 @@ export function App() {
     if (updateStatus.status === 'ready') setUpdateOpen(true)
   }, [updateStatus.status])
 
+  const openUpdateCenter = useCallback((): void => {
+    setUpdateOpen(true)
+    if (updateStatus.status === 'idle' || updateStatus.status === 'not-available') check()
+  }, [updateStatus.status, check])
+
+  const handleClearChat = useCallback(async (): Promise<void> => {
+    await window.ashirs.clearChat()
+    setDraft('')
+    stop()
+  }, [stop])
+
   const toggleTts = (): void => {
     setTtsEnabled((prev) => {
       const next = !prev
@@ -144,15 +154,17 @@ export function App() {
           wakeStatus={wakeEnabled ? wake.status : null}
           onCycleTheme={cycleTheme}
           onOpenSettings={() => openCircuit('settings')}
-          onUpdateOpen={() => setUpdateOpen(true)}
+          onUpdateOpen={openUpdateCenter}
         />
         <div className="flex min-h-0 flex-1">
           <RailNav view={view} onChange={setView} />
 
-          {view === 'core' && (
-            <main className="flex min-h-0 flex-1">
-              <section className="hidden min-w-0 flex-1 flex-col items-center justify-center gap-5 md:flex">
-                <VoiceOrb state={orbState} level={voice.level} onToggle={voice.toggle} />
+          <main className="min-h-0 flex-1">
+            {view === 'core' && (
+              <section className="flex h-full flex-col items-center justify-center gap-5">
+                <div className="orb-stage">
+                  <VoiceOrb state={orbState} level={voice.level} onToggle={voice.toggle} />
+                </div>
                 <div className="text-center">
                   <p
                     className={`font-mono text-[11px] uppercase tracking-[0.4em] ${
@@ -161,7 +173,7 @@ export function App() {
                   >
                     {busy ? 'Thinking' : voice.recording ? 'Listening' : 'Online'}
                   </p>
-                  <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted opacity-60">
+                  <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.22em] text-ink-muted opacity-60">
                     {voice.recording
                       ? 'Speak freely — words appear as you talk'
                       : busy
@@ -171,43 +183,43 @@ export function App() {
                 </div>
                 <CircuitCards onOpen={openCircuit} />
               </section>
-              <aside className="glass-deep m-3 flex min-h-0 w-full flex-col rounded-xl md:w-[430px] md:shrink-0 lg:w-[480px]">
-                <MessageList messages={messages} />
-                <ChatInput
-                  value={draft}
-                  onValueChange={setDraft}
-                  busy={busy}
-                  ttsEnabled={ttsEnabled}
-                  micListening={voice.recording}
-                  micLevel={voice.level}
-                  voiceNotice={voice.error}
-                  onSend={send}
-                  onToggleMic={voice.toggle}
-                  onToggleTts={toggleTts}
-                />
-              </aside>
-            </main>
-          )}
+            )}
 
-          {view === 'agents' && (
-            <main className="min-h-0 flex-1 p-3">
-              <div className="glass-deep h-full rounded-xl">
-                <AgentTown theme={theme} activity={null} />
+            {view === 'agents' && (
+              <div className="h-full p-3">
+                <div className="glass-deep h-full rounded-xl">
+                  <AgentTown theme={theme} activity={null} />
+                </div>
               </div>
-            </main>
-          )}
+            )}
 
-          {view === 'world' && (
-            <main className="min-h-0 flex-1">
-              <WorldMonitor />
-            </main>
-          )}
+            {view === 'world' && (
+              <div className="h-full">
+                <WorldMonitor />
+              </div>
+            )}
 
-          {view === 'system' && (
-            <main className="min-h-0 flex-1">
-              <SystemView />
-            </main>
-          )}
+            {view === 'system' && (
+              <div className="h-full">
+                <SystemView />
+              </div>
+            )}
+          </main>
+
+          <ChatPanel
+            messages={messages}
+            busy={busy}
+            value={draft}
+            onValueChange={setDraft}
+            ttsEnabled={ttsEnabled}
+            micListening={voice.recording}
+            micLevel={voice.level}
+            voiceNotice={voice.error}
+            onSend={send}
+            onToggleMic={voice.toggle}
+            onToggleTts={toggleTts}
+            onClear={handleClearChat}
+          />
         </div>
       </div>
 
