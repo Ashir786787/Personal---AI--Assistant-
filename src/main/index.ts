@@ -16,6 +16,7 @@ import { readFileSync, existsSync } from 'node:fs'
 import { ToolRegistry } from './tools/registry'
 import { initAutoUpdater } from './updater'
 import { startScheduler } from './routines/scheduler'
+import { TOWN_AGENTS, type AgentId } from '@shared/agents'
 import type { StreamEvent } from '@shared/chat'
 import { log } from './lib/logger'
 
@@ -172,14 +173,18 @@ if (!gotLock) {
     // Groq first: dramatically faster responses. Gemini stays as automatic
     // fallback when Groq hits its free-tier rate limit (router cooldowns).
     const router = new ProviderRouter([createGeminiProvider(), createGroqProvider()], 'groq')
-    const memory = new ConversationMemory(
-      join(app.getPath('userData'), 'memory.json'),
-      createDpapiCipher()
+    const cipher = createDpapiCipher()
+    const memory = new ConversationMemory(join(app.getPath('userData'), 'memory.json'), cipher)
+    const agentMemories = new Map<AgentId, ConversationMemory>(
+      TOWN_AGENTS.map((agent) => [
+        agent.id,
+        new ConversationMemory(join(app.getPath('userData'), 'agents', `${agent.id}.json`), cipher)
+      ])
     )
     const registry = ToolRegistry.withDefaults((proposal) => {
       if (!mainWindow.isDestroyed()) mainWindow.webContents.send(IPC.actionProposed, proposal)
     })
-    registerChatIpc(mainWindow.webContents, router, memory, registry)
+    registerChatIpc(mainWindow.webContents, router, memory, registry, agentMemories)
     registerVoiceIpc(mainWindow.webContents)
     registerSettingsIpc()
     registerSystemHandlers(memory, registry)

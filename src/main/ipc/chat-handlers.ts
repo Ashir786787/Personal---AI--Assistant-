@@ -3,13 +3,15 @@ import { IPC, type StatusSnapshot } from '@shared/ipc'
 import type { SendChatRequest, StreamEvent } from '@shared/chat'
 import type { ProviderId } from '@shared/providers'
 import { TOOL_PROTOCOL_INSTRUCTIONS } from '@shared/tools'
+import { isAgentId, agentConfig, type AgentId } from '@shared/agents'
 import { getApiKey } from '../settings/store'
-import type { ConversationMemory } from '../conversation/memory'
+import { ConversationMemory } from '../conversation/memory'
 import { SYSTEM_PROMPT } from '../conversation/persona'
 import { ProviderError } from '../llm/errors'
 import type { ChatTurn } from '../llm/provider'
 import type { ProviderRouter } from '../llm/router'
 import type { ToolRegistry } from '../tools/registry'
+import { scopedToolUsage } from './tool-scope'
 import { extractToolAction } from '../tools/parse'
 import { getProposal, resolveProposal, type PendingProposal } from '../tools/proposals'
 import { executeOrganizationPlan } from '../fs/executor'
@@ -44,14 +46,51 @@ function parseRequest(raw: unknown): SendChatRequest {
   if (text.length > MAX_INPUT_LENGTH) {
     throw new ValidationError(`Message too long (${text.length} chars, max ${MAX_INPUT_LENGTH})`)
   }
-  return { text }
+  const agentId = (raw as SendChatRequest).agentId
+  if (agentId !== undefined && !isAgentId(agentId)) {
+    throw new ValidationError('Unknown agent id')
+  }
+  return { text, ...(agentId !== undefined ? { agentId } : {}) }
+}
+
+/** Fully scoped conversation context for one chat-or-agent turn. */
+interface ChatRuntime {
+  memory: ConversationMemory
+  systemPrompt: string
+  instructions: string
+  allowedTools: ReadonlySet<string> | null
+}
+
+function runtimeFor(
+  agentId: AgentId | undefined,
+  mainMemory: ConversationMemory,
+  agentMemories: ReadonlyMap<AgentId, ConversationMemory>,
+  registry: ToolRegistry
+): ChatRuntime {
+  if (agentId === undefined) {
+    return {
+      memory: mainMemory,
+      systemPrompt: SYSTEM_PROMPT,
+      instructions: TOOL_PROTOCOL_INSTRUCTIONS,
+      allowedTools: null
+    }
+  }
+  const config = agentConfig(agentId)
+  const allowedTools = new Set(config.tools)
+  return {
+    memory: agentMemories.get(agentId) ?? new ConversationMemory(),
+    systemPrompt: config.systemPrompt,
+    instructions: scopedToolUsage(registry.definitionsFor(allowedTools)),
+    allowedTools
+  }
 }
 
 export function registerChatIpc(
   webContents: WebContents,
   router: ProviderRouter,
   memory: ConversationMemory,
-  registry: ToolRegistry
+  registry: ToolRegistry,
+  agentMemories: ReadonlyMap<AgentId, ConversationMemory>
 ): void {
   let active: AbortController | null = null
 
@@ -71,13 +110,26 @@ export function registerChatIpc(
     const controller = new AbortController()
     active = controller
 
-    const userMessage = memory.append('user', request.text)
+    const runtime = runtimeFor(request.agentId, memory, agentMemories, registry)
+
+    const userMessage = runtime.memory.append('user', request.text)
     const turns: ChatTurn[] = [
-      { role: 'system', content: `${SYSTEM_PROMPT}\n\n${TOOL_PROTOCOL_INSTRUCTIONS}` },
-      ...memory.recent().map((m) => ({ role: m.role, content: truncate(m.content) }) as ChatTurn)
+      { role: 'system', content: `${runtime.systemPrompt}\n\n${runtime.instructions}` },
+      ...runtime.memory
+        .recent()
+        .map((m) => ({ role: m.role, content: truncate(m.content) }) as ChatTurn)
     ]
 
-    void streamResponse(router, memory, registry, turns, controller, emit, request.text)
+    void streamResponse(
+      router,
+      runtime.memory,
+      registry,
+      turns,
+      controller,
+      emit,
+      request.text,
+      runtime.allowedTools
+    )
       .catch((err: unknown) => {
         const message =
           err instanceof Error ? err.message : 'Something went wrong on my side. Try again'
@@ -258,7 +310,8 @@ async function streamResponse(
   turns: ChatTurn[],
   controller: AbortController,
   emit: (event: StreamEvent) => void,
-  userText: string
+  userText: string,
+  allowed?: ReadonlySet<string> | null
 ): Promise<void> {
   const attempted = new Set<string>()
   const failed = new Set<ProviderId>()
@@ -289,16 +342,22 @@ async function streamResponse(
         emit({ type: 'delta', text: chunk })
       }
     } catch (err) {
-      if ((err as Error).name === 'AbortError' || (err as Error).name === 'TimeoutError') {
+      if ((err as Error).name === 'AbortError') {
         if (full.length > 0) {
-          const notice =
-            '\n\n_(my connection cut off mid-answer — say "continue" if it stops short)_'
+          const notice = '\n\n_(stopped — the turn was cancelled mid-answer)_'
           full += notice
           emit({ type: 'delta', text: notice })
-          log('warn', 'chat', `${provider.id} timed out mid-stream; kept partial answer`)
+          emit({ type: 'cancelled' })
+          log('warn', 'chat', `${provider.id} turn cancelled with a partial answer`)
           memory.append('assistant', `${full} ${CUTOFF_MARKER}`)
           return
         }
+        emit({ type: 'cancelled' })
+        log('warn', 'chat', `${provider.id} turn cancelled before any output`)
+        return
+      }
+
+      if ((err as Error).name === 'TimeoutError') {
         emit({
           type: 'error',
           message: `${provider.id} took too long to answer. Please try sending that again`,
@@ -336,7 +395,10 @@ async function streamResponse(
       throw err
     }
 
-    if (controller.signal.aborted) return
+    if (controller.signal.aborted) {
+      emit({ type: 'cancelled' })
+      return
+    }
 
     if (full.length === 0) {
       if (attempted.size < router.count) {
@@ -387,7 +449,7 @@ async function streamResponse(
 
     let toolOutcome: string
     try {
-      toolOutcome = await registry.execute(action)
+      toolOutcome = await registry.execute(action, allowed)
     } catch (err) {
       toolOutcome = `TOOL_ERROR: ${err instanceof Error ? err.message : String(err)}`
     }

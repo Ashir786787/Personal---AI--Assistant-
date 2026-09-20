@@ -10,6 +10,22 @@ export interface ToolDefinition {
   execute(args: Record<string, unknown>): Promise<string>
 }
 
+/** Arg-shape examples per tool, shown to the model so it builds valid calls. */
+export const TOOL_USAGE: Record<string, string> = {
+  list_folder: '{"path": "Downloads"}',
+  folder_summary: '{"path": "Downloads"}',
+  sandbox_overview: '{}',
+  search_files: '{"path": "Downloads", "query": "vanguard"}',
+  organize_folder: '{"path": "Downloads"}',
+  set_volume: '{"level": 40}',
+  toggle_mute: '{}',
+  set_brightness: '{"level": 70}',
+  launch_app: '{"app": "Google Chrome", "url": "https://youtube.com"}',
+  schedule_routine: '{"path": "Downloads", "time": "21:00"}',
+  list_routines: '{}',
+  delete_routine: '{"id": "<id from list_routines>"}'
+}
+
 export const TOOL_PROTOCOL_INSTRUCTIONS = [
   "You can perform real actions on Ashir's computer through tools.",
   'When you decide to use one, reply with ONLY a json code block and nothing else:',

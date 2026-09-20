@@ -25,7 +25,18 @@ export class ToolRegistry {
     return [...this.tools.values()]
   }
 
-  async execute(action: ToolAction): Promise<string> {
+  /** Definitions limited to an allowlist (agent tool scope). null = all tools. */
+  definitionsFor(allowed: ReadonlySet<string> | null | undefined): ToolDefinition[] {
+    if (!allowed) return this.definitions()
+    return this.definitions().filter((tool) => allowed.has(tool.name))
+  }
+
+  async execute(action: ToolAction, allowed?: ReadonlySet<string> | null): Promise<string> {
+    if (allowed && !allowed.has(action.tool)) {
+      throw new ToolExecutionError(
+        `Tool "${action.tool}" is not part of this agent's toolkit — say you cannot do it`
+      )
+    }
     const tool = this.tools.get(action.tool)
     if (!tool) {
       throw new ToolExecutionError(

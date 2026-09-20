@@ -83,6 +83,17 @@ export function useChat() {
           setBusy(false)
           break
         }
+        case 'cancelled': {
+          const { messageId } = stream.current
+          if (messageId) {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === messageId ? { ...m, streaming: false } : m))
+            )
+          }
+          stream.current = { messageId: null, provider: null }
+          setBusy(false)
+          break
+        }
         case 'reset': {
           stream.current = { messageId: null, provider: null }
           setMessages([])

@@ -226,11 +226,11 @@ export function App() {
             )}
 
             {view === 'agents' && (
-              <div className="h-full p-3">
-                <div className="glass-deep h-full rounded-xl">
-                  <AgentTown theme={theme} activity={null} />
-                </div>
-              </div>
+              <AgentTown
+                theme={theme}
+                focused={view === 'agents'}
+                approvalOpen={proposal !== null}
+              />
             )}
 
             {view === 'world' && (
