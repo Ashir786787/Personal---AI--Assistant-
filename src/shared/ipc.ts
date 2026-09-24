@@ -1,4 +1,5 @@
 import type { SendChatRequest, SendChatResponse, StreamEvent } from './chat'
+import type { FeedBatch } from './feed'
 import type { ProviderId } from './providers'
 
 export const IPC = {
@@ -21,7 +22,9 @@ export const IPC = {
   memorySummary: 'memory:summary',
   wakeModelState: 'wake:model-state',
   wakeModelStart: 'wake:model-start',
-  wakeModelProgress: 'wake:model-progress'
+  wakeModelProgress: 'wake:model-progress',
+  feedFetch: 'feed:fetch',
+  feedOpenExternal: 'feed:open'
 } as const
 
 export interface VoiceRecording {
@@ -109,4 +112,6 @@ export interface AshirsBridge {
   getWakeModelState(): Promise<WakeModelStateInfo>
   startWakeModelDownload(): Promise<void>
   onWakeModelProgress(listener: (info: WakeModelStateInfo) => void): () => void
+  fetchFeeds(sources: string[]): Promise<FeedBatch>
+  openExternalIfHttps(url: string): Promise<void>
 }

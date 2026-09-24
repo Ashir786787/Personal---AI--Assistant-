@@ -10,6 +10,7 @@ import { registerVoiceIpc } from './ipc/voice-handlers'
 import { registerSettingsIpc } from './ipc/settings-handlers'
 import { registerSystemHandlers } from './ipc/system-handlers'
 import { registerWakeIpc } from './ipc/wake-handlers'
+import { registerWorldIpc } from './ipc/world-handlers'
 import { modelFilePath, loadVoskWorkerSource } from './wake/store'
 import { createDpapiCipher } from './security/vault'
 import { readFileSync, existsSync } from 'node:fs'
@@ -189,6 +190,7 @@ if (!gotLock) {
     registerSettingsIpc()
     registerSystemHandlers(memory, registry)
     registerWakeIpc(mainWindow.webContents)
+    registerWorldIpc()
     initAutoUpdater(mainWindow.webContents)
     startScheduler((summaries) => {
       for (const summary of summaries) {

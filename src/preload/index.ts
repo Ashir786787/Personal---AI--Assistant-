@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { StreamEvent } from '@shared/chat'
+import type { FeedBatch } from '@shared/feed'
 import type {
   ActionProposal,
   AshirsBridge,
@@ -55,7 +56,11 @@ const bridge: AshirsBridge = {
     const wrapped = (_event: unknown, info: WakeModelStateInfo): void => listener(info)
     ipcRenderer.on(IPC.wakeModelProgress, wrapped)
     return () => ipcRenderer.removeListener(IPC.wakeModelProgress, wrapped)
-  }
+  },
+  fetchFeeds: (sources: string[]) =>
+    ipcRenderer.invoke(IPC.feedFetch, sources) as Promise<FeedBatch>,
+  openExternalIfHttps: (url: string) =>
+    ipcRenderer.invoke(IPC.feedOpenExternal, url) as Promise<void>
 }
 
 contextBridge.exposeInMainWorld('ashirs', bridge)
