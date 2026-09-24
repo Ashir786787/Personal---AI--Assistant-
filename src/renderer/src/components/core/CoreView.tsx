@@ -78,10 +78,13 @@ export function CoreView({
 
   useEffect(refreshLines, [refreshLines])
 
-  const orbD = orbDiameter(box.w, box.h)
-  const orbitR = orbD * 0.725
   const cx = box.w / 2
   const cy = box.h / 2
+  const orbD = orbDiameter(box.w, box.h)
+  const orbitR = Math.max(
+    10,
+    Math.min(orbD * 0.725, cx - NODE_W / 2 - 14, cy - NODE_H / 2 - 8, box.h - cy - NODE_H / 2 - 20)
+  )
 
   const points: Record<'memory' | 'skills' | 'soul' | 'settings', { x: number; y: number }> = {
     memory: { x: cx, y: cy - orbitR },

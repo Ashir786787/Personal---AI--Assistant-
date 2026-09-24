@@ -5,6 +5,14 @@ import { Button } from '../ui/Button'
 
 type FeedApi = ReturnType<typeof useWorldFeed>
 
+const PRESETS: Array<{ label: string; url: string }> = [
+  { label: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
+  { label: 'BBC Urdu', url: 'https://feeds.bbci.co.uk/urdu/rss.xml' },
+  { label: 'The Guardian', url: 'https://www.theguardian.com/world/rss' },
+  { label: 'NYT World', url: 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml' },
+  { label: 'Dawn (PK)', url: 'https://www.dawn.com/feeds/home' }
+]
+
 function timeLabel(timestamp: number | null): string {
   if (timestamp === null) return 'never refreshed'
   const diff = Math.max(0, Date.now() - timestamp)
@@ -48,9 +56,20 @@ export function HeadlinesFeed({ feed }: { feed: FeedApi }) {
 
   const submit = (): void => {
     if (draft.trim().length === 0) return
+    const first = feed.sources.length === 0
     const err = feed.addSource(draft.trim())
     setNotice(err)
-    if (err === null) setDraft('')
+    if (err === null) {
+      setDraft('')
+      if (first) void feed.refresh()
+    }
+  }
+
+  const addPreset = (url: string): void => {
+    const first = feed.sources.length === 0
+    const err = feed.addSource(url)
+    setNotice(err)
+    if (err === null && first) void feed.refresh()
   }
 
   return (
@@ -95,6 +114,23 @@ export function HeadlinesFeed({ feed }: { feed: FeedApi }) {
       <p className="text-[11px] text-ink/45">
         {feed.sources.length} source(s) · stored locally · {timeLabel(feed.refreshedAt)}
       </p>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink/45">
+          Quick add
+        </span>
+        {PRESETS.map((preset) => (
+          <button
+            key={preset.url}
+            type="button"
+            onClick={() => addPreset(preset.url)}
+            className="chip rounded-full text-ink/60 transition-colors hover:border-accent/50 hover:text-accent"
+            title={`Add ${preset.label} (${preset.url})`}
+          >
+            + {preset.label}
+          </button>
+        ))}
+      </div>
 
       {feed.sources.length > 0 && (
         <div className="flex flex-wrap gap-1.5">

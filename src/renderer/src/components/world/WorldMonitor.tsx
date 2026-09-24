@@ -46,7 +46,7 @@ export function WorldMonitor() {
       </header>
 
       <div className="flex min-h-0 flex-1 gap-4">
-        <aside className="w-[190px] shrink-0 overflow-y-auto">
+        <aside className="w-[150px] shrink-0 overflow-y-auto">
           <div className="mb-2 flex items-center justify-between px-1">
             <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-muted">
               World clocks
@@ -68,15 +68,18 @@ export function WorldMonitor() {
             ) : (
               <MapCanvas hotspots={feed.hotspots} />
             )}
+            <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-base/70 px-2.5 py-1 font-mono text-[10px] tracking-wider text-ink/45">
+              {tab === 'globe' ? 'drag to rotate · scroll to zoom' : 'drag to pan · scroll to zoom'}
+            </div>
             <div className="pointer-events-none absolute bottom-3 right-3 rounded-lg bg-base/70 px-2.5 py-1 font-mono text-[10px] tracking-wider text-ink/55">
               {feed.hotspots.length === 0
-                ? 'no hotspots — enable the headline feed'
+                ? 'no hotspots — headlines with country names appear here'
                 : `${feed.hotspots.length} hotspot${feed.hotspots.length === 1 ? '' : 's'}`}
             </div>
           </div>
         </main>
 
-        <aside className="w-[320px] shrink-0">
+        <aside className="w-[300px] shrink-0">
           <HeadlinesFeed feed={feed} />
         </aside>
       </div>

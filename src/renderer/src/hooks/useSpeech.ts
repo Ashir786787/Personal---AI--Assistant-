@@ -1,4 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { hasUrduScript, MAX_SPEECH_CHARS, SPEECH_RATE, speechText } from '../lib/speechText'
+
+let cachedVoices: SpeechSynthesisVoice[] = []
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  const prime = (): void => {
+    cachedVoices = window.speechSynthesis.getVoices()
+  }
+  prime()
+  window.speechSynthesis.addEventListener('voiceschanged', prime)
+}
+
+function pickVoice(text: string): SpeechSynthesisVoice | null {
+  const want = hasUrduScript(text) ? 'ur' : 'en'
+  const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices()
+  return (
+    voices.find((voice) => voice.lang.startsWith(want)) ??
+    voices.find((voice) => voice.lang.startsWith(want === 'ur' ? 'en' : 'ur')) ??
+    null
+  )
+}
 
 export function useSpeech(enabled: boolean): {
   speak: (text: string) => void
@@ -16,14 +36,16 @@ export function useSpeech(enabled: boolean): {
     }
   }, [])
 
-  const speak = useCallback((text: string): void => {
+  const speak = useCallback((input: string): void => {
     if (!enabledRef.current || !('speechSynthesis' in window)) return
+    const text = speechText(input, MAX_SPEECH_CHARS)
+    if (text.length === 0) return
     window.speechSynthesis.cancel()
 
     const utterance = new SpeechSynthesisUtterance(text)
-    utterance.rate = 1.06
+    utterance.rate = SPEECH_RATE
     utterance.pitch = 1
-    const [voice] = window.speechSynthesis.getVoices().filter((v) => v.lang.startsWith('en'))
+    const voice = pickVoice(text)
     if (voice) utterance.voice = voice
     utterance.onstart = () => setSpeaking(true)
     utterance.onend = () => setSpeaking(false)

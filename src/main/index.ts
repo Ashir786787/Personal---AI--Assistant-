@@ -4,6 +4,7 @@ import { IPC } from '@shared/ipc'
 import { ConversationMemory } from './conversation/memory'
 import { createGeminiProvider } from './llm/gemini'
 import { createGroqProvider } from './llm/groq'
+import { probePreferredProvider } from './llm/probe'
 import { ProviderRouter } from './llm/router'
 import { registerChatIpc } from './ipc/chat-handlers'
 import { registerVoiceIpc } from './ipc/voice-handlers'
@@ -133,7 +134,7 @@ if (!gotLock) {
     }
   })
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     Menu.setApplicationMenu(null)
     applySecurityPolicy()
 
@@ -171,9 +172,11 @@ if (!gotLock) {
 
     const mainWindow = createMainWindow()
 
-    // Groq first: dramatically faster responses. Gemini stays as automatic
-    // fallback when Groq hits its free-tier rate limit (router cooldowns).
-    const router = new ProviderRouter([createGeminiProvider(), createGroqProvider()], 'groq')
+    // Lead with whichever provider validated at startup: Groq first when its
+    // key works (dramatically faster), Gemini first when the Groq key was
+    // rejected, so replies never burn a failed round-trip. Re-probed on launch.
+    const preferred = await probePreferredProvider()
+    const router = new ProviderRouter([createGeminiProvider(), createGroqProvider()], preferred)
     const cipher = createDpapiCipher()
     const memory = new ConversationMemory(join(app.getPath('userData'), 'memory.json'), cipher)
     const agentMemories = new Map<AgentId, ConversationMemory>(

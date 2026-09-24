@@ -36,44 +36,48 @@ function Gauge({
   samples: readonly number[]
   sparkLabel: string
 }): JSX.Element {
-  const radius = 52
+  const radius = 42
   const circumference = 2 * Math.PI * radius
   const swept =
     ringValue === null ? 0 : (Math.min(100, Math.max(0, ringValue)) / 100) * circumference
   return (
-    <div className="glass flex min-w-0 flex-col items-center gap-3 rounded-xl p-5">
-      <svg viewBox="0 0 120 120" className="h-32 w-32 -rotate-90">
-        <circle
-          cx="60"
-          cy="60"
-          r={radius}
-          fill="none"
-          stroke="rgb(var(--c-edge))"
-          strokeWidth="7"
-        />
-        <circle
-          cx="60"
-          cy="60"
-          r={radius}
-          fill="none"
-          stroke="rgb(var(--c-accent))"
-          strokeWidth="7"
-          strokeLinecap="round"
-          strokeDasharray={`${swept} ${circumference}`}
-          className="transition-[stroke-dasharray] duration-700"
-        />
-      </svg>
-      <div className="-mt-[104px] mb-[72px] text-center">
-        <div className="font-mono text-xl font-semibold text-ink">{valueText}</div>
+    <div className="glass flex min-w-0 items-center gap-4 rounded-xl p-4">
+      <div className="relative h-24 w-24 shrink-0">
+        <svg viewBox="0 0 100 100" className="h-24 w-24 -rotate-90">
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="none"
+            stroke="rgb(var(--c-edge))"
+            strokeWidth="7"
+          />
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="none"
+            stroke="rgb(var(--c-accent))"
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeDasharray={`${swept} ${circumference}`}
+            className="transition-[stroke-dasharray] duration-700"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="font-mono text-lg font-semibold text-ink">{valueText}</span>
+        </div>
       </div>
-      <Sparkline
-        data={samples}
-        label={sparkLabel}
-        className="h-10 w-full max-w-[11rem] text-accent"
-      />
-      <div className="text-center">
-        <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-accent">{label}</p>
-        {detail && <p className="mt-1 text-xs text-ink-muted">{detail}</p>}
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <p className="truncate font-mono text-[11px] uppercase tracking-[0.25em] text-accent">
+          {label}
+        </p>
+        <Sparkline
+          data={samples}
+          label={sparkLabel}
+          className="h-7 w-full max-w-[9rem] text-accent"
+        />
+        {detail && <p className="truncate text-[11px] text-ink-muted">{detail}</p>}
       </div>
     </div>
   )
@@ -121,15 +125,20 @@ export function SystemView(): JSX.Element {
 
   return (
     <div className="flex h-full w-full flex-col gap-4 p-5">
-      <div className="glass rounded-xl p-4">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.35em] text-accent">
-          System Core
-        </h2>
-        <p className="mt-1 text-xs text-ink-muted">
-          Read-only vitals — this view can never change anything
-        </p>
+      <div className="glass flex items-center justify-between gap-4 rounded-xl px-4 py-3">
+        <div>
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.35em] text-accent">
+            System Core
+          </h2>
+          <p className="mt-1 text-xs text-ink-muted">
+            Read-only vitals — this view can never change anything
+          </p>
+        </div>
+        <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
+          Last {SPARK_MAX_SAMPLES} readings · 2s · while visible
+        </span>
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-5 gap-4">
+      <div className="grid min-h-0 flex-1 grid-cols-5 auto-rows-min gap-3">
         <Gauge
           label="CPU"
           ringValue={stats?.cpuPercent ?? null}
@@ -169,9 +178,6 @@ export function SystemView(): JSX.Element {
           sparkLabel="Uptime in hours per 2-second reading"
         />
       </div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
-        Last {SPARK_MAX_SAMPLES} readings · 2s cadence while this view is visible
-      </p>
     </div>
   )
 }
