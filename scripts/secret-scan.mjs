@@ -10,7 +10,8 @@ const PATTERNS = [
   { name: 'Anthropic API key', regex: /sk-ant-[A-Za-z0-9_-]{20,}/ }
 ]
 
-const ALLOWED_FILES = new Set(['.env.example', 'scripts/secret-scan.mjs'])
+const ALLOWED_FILES = new Set(['scripts/secret-scan.mjs'])
+const PLACEHOLDER_VALUE = /^(REPLACE_ME|[*xX_]+)$/
 
 function stagedFiles() {
   const out = execSync('git diff --cached --name-only --diff-filter=ACM', {
@@ -22,10 +23,17 @@ function stagedFiles() {
     .filter(Boolean)
 }
 
-function findSecret(content) {
+function findSecret(content, file) {
   for (const { name, regex } of PATTERNS) {
     const match = content.match(regex)
-    if (match) return { name, sample: match[0].slice(0, 8) + '...' }
+    if (match) {
+      if (file === '.env.example') {
+        const line = content.split('\n').find((l) => l.includes(match[0]))
+        const value = line ? line.slice(line.indexOf('=') + 1).trim() : ''
+        if (PLACEHOLDER_VALUE.test(value)) continue
+      }
+      return { name, sample: match[0].slice(0, 8) + '...' }
+    }
   }
   return null
 }
@@ -40,7 +48,7 @@ for (const file of files) {
   } catch {
     continue
   }
-  const secret = findSecret(content)
+  const secret = findSecret(content, file)
   if (secret) {
     console.error(`SECRET DETECTED in ${file}: ${secret.name} (${secret.sample})`)
     leaked = true
