@@ -138,19 +138,19 @@ export function CoreView({
         </button>
       </div>
 
-      <div className="grid shrink-0 grid-cols-4 gap-2 px-6 pb-5 pt-3">
+      <div className="grid w-full shrink-0 grid-cols-4 gap-2 px-6 pb-5 pt-3">
         {[...CIRCUITS, { id: 'settings' as const, glyph: '⚙', title: 'Settings' }].map((item) => (
           <button
             key={item.id}
             type="button"
             onClick={() => showNode(item.id)}
-            className={`core-node ${open === item.id ? 'core-node-active' : ''}`}
+            className={`core-quick ${open === item.id ? 'core-quick-active' : ''}`}
           >
             <span className="core-node-glyph">{item.glyph}</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-ink">
+            <span className="max-w-full truncate font-mono text-[11px] uppercase tracking-[0.22em] text-ink">
               {item.title}
             </span>
-            <span className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">
+            <span className="max-w-full truncate font-mono text-[11px] uppercase tracking-widest text-ink-muted">
               {liveLine[item.id]}
             </span>
           </button>
