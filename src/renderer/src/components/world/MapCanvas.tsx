@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import type { Hotspot } from '@shared/feed'
-import { LAND_RINGS } from '../../state/land'
+import { LAND_RINGS, GAZETTEER } from '../../state/land'
 import { clamp, clampZoom } from '../../state/geo'
+import { planCountryLabels } from '../../state/labels'
 
 interface MapCanvasProps {
   hotspots: Hotspot[]
@@ -13,6 +14,7 @@ const MAX_ZOOM = 8
 const FALLBACK = {
   edge: '36 47 61',
   panel: '13 20 29',
+  inkMuted: '148 163 184',
   accent: '56 189 248'
 }
 
@@ -158,6 +160,27 @@ export function MapCanvas({ hotspots }: MapCanvasProps) {
         ctx.fill()
         ctx.strokeStyle = 'rgb(72 88 108 / 0.75)'
         ctx.stroke()
+      }
+
+      const fontPx = Math.round(clamp(zoom * 10.5, 9, 30))
+      const inkMuted = cssRgb('--c-ink-muted', FALLBACK.inkMuted)
+      const labels = planCountryLabels(
+        GAZETTEER.countries.map((country) => {
+          const p = toScreen(country.lon, country.lat)
+          return {
+            name: country.name,
+            x: p.x,
+            y: p.y,
+            visible: p.x >= 0 && p.x <= size.w && p.y >= 0 && p.y <= size.h
+          }
+        }),
+        { fontPx, width: size.w, height: size.h }
+      )
+      ctx.font = `600 ${fontPx}px "JetBrains Mono", monospace`
+      ctx.textAlign = 'center'
+      ctx.fillStyle = `rgb(${inkMuted} / 0.85)`
+      for (const label of labels) {
+        ctx.fillText(label.name, label.x, label.y + fontPx / 3)
       }
 
       for (const hotspot of hotspotsRef.current) {

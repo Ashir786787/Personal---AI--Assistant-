@@ -37,6 +37,14 @@ export interface Hotspot {
   sample: string
 }
 
+// When the news feed is switched on for the first time these two real, live
+// BBC feeds are subscribed so the headlines work immediately instead of
+// showing an empty state. The user can remove them like any other source.
+export const DEFAULT_FEED_SOURCES: readonly string[] = [
+  'https://feeds.bbci.co.uk/news/world/rss.xml',
+  'https://feeds.bbci.co.uk/urdu/rss.xml'
+]
+
 function urlDecode(value: string): string {
   try {
     return decodeURIComponent(value)

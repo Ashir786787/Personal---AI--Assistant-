@@ -6,6 +6,21 @@ export const WAKE_PHRASES = [
   'jarvis'
 ] as const
 
+export const WAKE_FILLER_WORDS: ReadonlySet<string> = new Set([
+  'hm',
+  'hmm',
+  'mm',
+  'mmm',
+  'mhm',
+  'uh',
+  'uhh',
+  'um',
+  'umm',
+  'er',
+  'huh',
+  'ah'
+])
+
 const PUNCTUATION_RE = /[^a-z\s]/g
 
 export function normalizeForWake(text: string): string {
@@ -71,4 +86,26 @@ export function matchesWakePhrase(
     }
   }
   return null
+}
+
+/**
+ * True when the whole utterance is nothing but the wake phrase itself, with at
+ * most one trailing filler word: "hey jarvis" / "hey jarvis huh" are echoes,
+ * but "hey jarvis set a reminder" or "hey jarvis what time is it" are real
+ * instructions and stay significant.
+ */
+export function isWakePhraseAlone(text: string): boolean {
+  const normalized = normalizeForWake(text)
+  if (normalized.length === 0) return false
+
+  const match = matchesWakePhrase(normalized)
+  if (!match) return false
+
+  const tokens = normalized.split(' ')
+  const matchTokens = match.split(' ').length
+  if (tokens.length === matchTokens) return true
+  if (tokens.length === matchTokens + 1) {
+    return WAKE_FILLER_WORDS.has(tokens[tokens.length - 1] ?? '')
+  }
+  return false
 }

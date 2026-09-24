@@ -19,6 +19,7 @@ import { useUpdater, updateLabel } from './hooks/useUpdater'
 import { usePowerState } from './hooks/usePowerState'
 import { isPowered } from './state/powerState'
 import { useWakeWord, isWakeEnabledStored, setWakeEnabledStored } from './hooks/useWakeWord'
+import { isSignificantTranscript } from './lib/transcriptFilter'
 
 const TTS_STORAGE_KEY = 'ashirs.tts-enabled'
 
@@ -53,6 +54,10 @@ export function App() {
   const handleTranscript = useCallback(
     (text: string): void => {
       setView('core')
+      if (!isSignificantTranscript(text)) {
+        setDraft('')
+        return
+      }
       if (busyRef.current) {
         setDraft(text)
         return

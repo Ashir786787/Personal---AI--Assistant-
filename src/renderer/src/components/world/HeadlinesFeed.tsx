@@ -56,20 +56,14 @@ export function HeadlinesFeed({ feed }: { feed: FeedApi }) {
 
   const submit = (): void => {
     if (draft.trim().length === 0) return
-    const first = feed.sources.length === 0
     const err = feed.addSource(draft.trim())
     setNotice(err)
-    if (err === null) {
-      setDraft('')
-      if (first) void feed.refresh()
-    }
+    if (err === null) setDraft('')
   }
 
   const addPreset = (url: string): void => {
-    const first = feed.sources.length === 0
     const err = feed.addSource(url)
     setNotice(err)
-    if (err === null && first) void feed.refresh()
   }
 
   return (

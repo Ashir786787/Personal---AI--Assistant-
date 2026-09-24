@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Hotspot } from '@shared/feed'
-import { LAND_RINGS, type LandRing } from '../../state/land'
+import { LAND_RINGS, GAZETTEER, type LandRing } from '../../state/land'
 import {
   clamp,
   clampZoom,
@@ -10,6 +10,7 @@ import {
   subsolarPoint,
   type Rotation
 } from '../../state/geo'
+import { planCountryLabels } from '../../state/labels'
 
 interface GlobeCanvasProps {
   hotspots: Hotspot[]
@@ -211,6 +212,27 @@ export function GlobeCanvas({ hotspots, reduced }: GlobeCanvasProps) {
 
       for (const ring of LAND_RINGS) {
         drawRing(ring, rot, sun.lat, sun.lon)
+      }
+
+      const fontPx = Math.round(clamp(radius / 26, 9, 22))
+      const inkMuted = cssRgb('--c-ink-muted', FALLBACK.inkMuted)
+      const labels = planCountryLabels(
+        GAZETTEER.countries.map((country) => {
+          const proj = orthographicProject(country.lon, country.lat, rot)
+          return {
+            name: country.name,
+            x: cx + proj.x * radius,
+            y: cy + proj.y * radius,
+            visible: proj.visible
+          }
+        }),
+        { fontPx, width: size.w, height: size.h }
+      )
+      ctx.font = `600 ${fontPx}px "JetBrains Mono", monospace`
+      ctx.textAlign = 'center'
+      ctx.fillStyle = `rgb(${inkMuted} / 0.85)`
+      for (const label of labels) {
+        ctx.fillText(label.name, label.x, label.y + fontPx / 3)
       }
 
       for (let i = 0; i < hotspotsRef.current.length; i++) {

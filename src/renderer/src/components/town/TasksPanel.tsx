@@ -94,7 +94,7 @@ export function TasksPanel({ agents, tasks, queueCount, onCancel }: TasksPanelPr
 
               {!connected && (
                 <p className="mt-2 text-xs text-ink-muted/70">
-                  Dave has no research tool yet — tasks to him stay disabled.
+                  {meta.title} has no tools connected yet — tasks to it stay disabled.
                 </p>
               )}
               {connected && agentTasks.length === 0 && (

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { FeedItem, FeedSourceResult, Hotspot } from '@shared/feed'
-import { matchHotspots, sanitizeFeedUrl } from '@shared/feed'
+import { DEFAULT_FEED_SOURCES, matchHotspots, sanitizeFeedUrl } from '@shared/feed'
 import { GAZETTEER } from '../state/land'
 
 const ENABLED_KEY = 'ashirs.feed.enabled'
@@ -28,8 +28,7 @@ export function useWorldFeed() {
   const sourcesRef = useRef(sources)
   sourcesRef.current = sources
 
-  const refresh = useCallback(async (): Promise<void> => {
-    const list = sourcesRef.current
+  const refreshWith = useCallback(async (list: string[]): Promise<void> => {
     if (list.length === 0) {
       setResults(null)
       setRefreshedAt(null)
@@ -51,6 +50,8 @@ export function useWorldFeed() {
     }
   }, [])
 
+  const refresh = useCallback((): Promise<void> => refreshWith(sourcesRef.current), [refreshWith])
+
   const persistSources = useCallback((next: string[]): void => {
     setSources(next)
     localStorage.setItem(SOURCES_KEY, JSON.stringify(next))
@@ -63,26 +64,43 @@ export function useWorldFeed() {
       const safe = sanitizeFeedUrl(raw)
       if (!safe) return 'Only https RSS feed urls are accepted'
       if (sourcesRef.current.includes(safe)) return 'That feed is already in the list'
-      persistSources([...sourcesRef.current, safe])
+      const next = [...sourcesRef.current, safe]
+      persistSources(next)
+      // Fetches the newly computed list directly: the ref only updates on the
+      // next render, so reading it here would fetch the pre-add empty list.
+      void refreshWith(next)
       return null
     },
-    [persistSources]
+    [persistSources, refreshWith]
   )
 
   const removeSource = useCallback(
     (url: string): void => {
-      persistSources(sourcesRef.current.filter((entry) => entry !== url))
+      const next = sourcesRef.current.filter((entry) => entry !== url)
+      persistSources(next)
+      void refreshWith(next)
     },
-    [persistSources]
+    [persistSources, refreshWith]
   )
 
   const setEnabled = useCallback(
     (value: boolean): void => {
       setEnabledState(value)
       localStorage.setItem(ENABLED_KEY, value ? '1' : '0')
-      if (value) void refresh()
+      if (value) {
+        const current = sourcesRef.current
+        if (current.length === 0) {
+          const defaults = DEFAULT_FEED_SOURCES.filter(
+            (entry) => sanitizeFeedUrl(entry) !== null
+          ) as string[]
+          persistSources(defaults)
+          void refreshWith(defaults)
+        } else {
+          void refreshWith(current)
+        }
+      }
     },
-    [refresh]
+    [persistSources, refreshWith]
   )
 
   const items = useMemo<FeedItem[]>(

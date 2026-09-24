@@ -78,16 +78,22 @@ export function TownCanvas({ player, agents, accentTriplet, reduced }: TownCanva
     let last = 0
 
     const sprite = (at: Pt, color: string, tMs: number, scale: number, dir: 1 | -1): void => {
-      const bob = reducedRef.current ? 0 : Math.sin(tMs / 320 + at.x) * scale * 0.12
+      const bob = reducedRef.current ? 0 : Math.sin(tMs / 320 + at.x) * scale * 0.1
       const s = scale
-      ctx.fillStyle = color
-      ctx.fillRect(at.x * s - s * 0.28, at.y * s - s * 1.3 + bob, s * 0.56, s * 0.56)
-      ctx.fillRect(at.x * s - s * 0.42, at.y * s - s * 0.7 + bob, s * 0.84, s * 0.8)
+      const cx = at.x * s
+      const foot = at.y * s + s * 0.34
+      const stagger = (tMs / 150) % 2
+      const legSwing = reducedRef.current ? 0 : s * 0.16 * (stagger < 1 ? 1 : -1)
       ctx.fillStyle = 'rgb(71 85 105)'
-      const stride = (tMs / 140) % 2
-      const legSwing = reducedRef.current ? 0 : scale * 0.14 * (stride < 1 ? 1 : -1)
-      ctx.fillRect(at.x * s - s * 0.34 + legSwing * 0.5, at.y * s + bob, s * 0.28, s * 0.42)
-      ctx.fillRect(at.x * s + s * 0.06 - legSwing * 0.5, at.y * s + bob, s * 0.28, s * 0.42)
+      ctx.fillRect(cx - s * 0.32 + legSwing * 0.5, foot, s * 0.24, s * 0.2)
+      ctx.fillRect(cx + s * 0.08 - legSwing * 0.5, foot, s * 0.24, s * 0.2)
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.roundRect(cx - s * 0.4, at.y * s - s * 1.28 + bob, s * 0.8, s * 0.78, s * 0.22)
+      ctx.fill()
+      ctx.beginPath()
+      ctx.arc(cx, at.y * s - s * 1.5 + bob, s * 0.3, 0, Math.PI * 2)
+      ctx.fill()
       void dir
     }
 
@@ -134,34 +140,54 @@ export function TownCanvas({ player, agents, accentTriplet, reduced }: TownCanva
           if (kind === 'wall') {
             ctx.fillStyle = `rgb(${edge} / 0.55)`
             ctx.fillRect(px, py, s, s)
+            ctx.fillStyle = `rgb(${edge} / 0.25)`
+            ctx.fillRect(px + s * 0.18, py + s * 0.18, s * 0.64, s * 0.64)
           } else if (kind === 'desk') {
-            ctx.fillStyle = `rgb(${raised} / 0.9)`
+            ctx.fillStyle = `rgb(${raised} / 0.92)`
             ctx.fillRect(px, py, s, s)
-            ctx.fillStyle = `rgb(${edge} / 0.7)`
-            ctx.fillRect(px + s * 0.1, py + s * 0.4, s * 0.8, s * 0.08)
+            ctx.fillStyle = `rgb(${edge} / 0.75)`
+            ctx.fillRect(px + s * 0.08, py + s * 0.42, s * 0.84, s * 0.09)
+            ctx.fillStyle = `rgb(${inkMuted} / 0.55)`
+            ctx.fillRect(px + s * 0.28, py + s * 0.26, s * 0.44, s * 0.1)
+            ctx.fillRect(px + s * 0.4, py + s * 0.1, s * 0.2, s * 0.16)
           } else if (kind === 'whiteboard') {
             ctx.fillStyle = `rgb(${raised} / 0.7)`
             ctx.fillRect(px, py, s, s)
-            ctx.strokeStyle = `rgb(${accent} / 0.55)`
+            ctx.strokeStyle = `rgb(${accent} / 0.6)`
             ctx.lineWidth = 1
-            ctx.strokeRect(px + s * 0.18, py + s * 0.18, s * 0.64, s * 0.64)
-            ctx.fillStyle = `rgb(${inkMuted} / 0.5)`
-            ctx.fillRect(px + s * 0.28, py + s * 0.34, s * 0.44, s * 0.05)
-            ctx.fillRect(px + s * 0.28, py + s * 0.5, s * 0.3, s * 0.05)
+            ctx.strokeRect(px + s * 0.14, py + s * 0.12, s * 0.72, s * 0.76)
+            ctx.strokeStyle = `rgb(${accent} / 0.35)`
+            ctx.beginPath()
+            ctx.moveTo(px + s * 0.26, py + s * 0.7)
+            ctx.lineTo(px + s * 0.42, py + s * 0.5)
+            ctx.lineTo(px + s * 0.54, py + s * 0.62)
+            ctx.lineTo(px + s * 0.72, py + s * 0.34)
+            ctx.stroke()
           } else if (kind === 'server') {
-            ctx.fillStyle = `rgb(${edge} / 0.4)`
-            ctx.fillRect(px + s * 0.15, py + s * 0.2, s * 0.5, s * 0.34)
-            ctx.fillRect(px + s * 0.15, py + s * 0.6, s * 0.5, s * 0.2)
+            ctx.fillStyle = `rgb(${edge} / 0.42)`
+            ctx.fillRect(px + s * 0.14, py + s * 0.16, s * 0.52, s * 0.68)
+            for (let ring = 0; ring < 3; ring++) {
+              ctx.fillStyle = `rgb(${edge} / 0.7)`
+              ctx.fillRect(px + s * 0.2, py + s * 0.26 + ring * s * 0.2, s * 0.4, s * 0.06)
+              ctx.fillStyle = `rgb(${accent} / 0.7)`
+              ctx.fillRect(px + s * 0.2, py + s * 0.26 + ring * s * 0.2, s * 0.06, s * 0.06)
+            }
           } else if (kind === 'coffee') {
             ctx.fillStyle = `rgb(${edge} / 0.6)`
-            ctx.fillRect(px + s * 0.3, py + s * 0.5, s * 0.4, s * 0.32)
-            ctx.fillStyle = `rgb(${accent} / 0.5)`
-            ctx.fillRect(px + s * 0.4, py + s * 0.2, s * 0.06, s * 0.2)
+            ctx.fillRect(px + s * 0.28, py + s * 0.46, s * 0.44, s * 0.38)
+            ctx.fillStyle = `rgb(${raised})`
+            ctx.fillRect(px + s * 0.38, py + s * 0.5, s * 0.24, s * 0.28)
+            ctx.fillStyle = `rgb(${accent} / 0.55)`
+            ctx.fillRect(px + s * 0.62, py + s * 0.54, s * 0.06, s * 0.2)
+            ctx.fillRect(px + s * 0.4, py + s * 0.24, s * 0.05, s * 0.14)
+            ctx.fillRect(px + s * 0.5, py + s * 0.18, s * 0.05, s * 0.18)
           } else if (kind === 'plant') {
-            ctx.fillStyle = 'rgb(34 197 94 / 0.55)'
-            ctx.fillRect(px + s * 0.42, py + s * 0.2, s * 0.16, s * 0.5)
-            ctx.fillRect(px + s * 0.2, py + s * 0.4, s * 0.16, s * 0.3)
-            ctx.fillRect(px + s * 0.63, py + s * 0.4, s * 0.16, s * 0.3)
+            ctx.fillStyle = 'rgb(34 197 94 / 0.6)'
+            ctx.beginPath()
+            ctx.arc(px + s * 0.5, py + s * 0.36, s * 0.24, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.fillStyle = `rgb(${edge} / 0.6)`
+            ctx.fillRect(px + s * 0.34, py + s * 0.62, s * 0.32, s * 0.24)
           }
         }
       }
@@ -182,10 +208,26 @@ export function TownCanvas({ player, agents, accentTriplet, reduced }: TownCanva
         sprite(agent.pos, color, now, s, 1)
         ctx.globalAlpha = 1
 
-        ctx.font = `600 ${Math.max(9, Math.round(s * 0.55))}px "JetBrains Mono", monospace`
+        ctx.font = `600 ${Math.max(11, Math.round(s * 0.55))}px "JetBrains Mono", monospace`
         ctx.textAlign = 'center'
+        const labelY = agent.pos.y * s - s * 1.8
+        const labelW = ctx.measureText(agent.title).width + s * 0.7
+        ctx.fillStyle = `rgb(${panel} / 0.92)`
+        ctx.beginPath()
+        ctx.roundRect(agent.pos.x * s - labelW / 2, labelY - s * 0.32, labelW, s * 0.66, s * 0.2)
+        ctx.fill()
         ctx.fillStyle = walking ? `rgb(${accent})` : `rgb(${inkMuted})`
-        ctx.fillText(agent.title, agent.pos.x * s, agent.pos.y * s - s * 1.5)
+        ctx.fillText(agent.title, agent.pos.x * s, labelY + s * 0.12)
+        ctx.fillStyle = agent.connected ? `rgb(${accent})` : 'rgb(100 116 139)'
+        ctx.beginPath()
+        ctx.arc(
+          agent.pos.x * s - labelW / 2 + s * 0.2,
+          labelY - s * 0.01,
+          Math.max(1.5, s * 0.06),
+          0,
+          Math.PI * 2
+        )
+        ctx.fill()
         if (agent.pose === 'done') {
           ctx.fillStyle = `rgb(${accent})`
           ctx.fillText('✓ done', agent.pos.x * s, agent.pos.y * s + s * 1.9)
@@ -216,7 +258,7 @@ export function TownCanvas({ player, agents, accentTriplet, reduced }: TownCanva
       ctx.beginPath()
       ctx.roundRect(p.x * s - s * 0.72, p.y * s - s * 1.75, s * 1.44, s * 1.35, s * 0.3)
       ctx.stroke()
-      ctx.font = `600 ${Math.max(9, Math.round(s * 0.55))}px "JetBrains Mono", monospace`
+      ctx.font = `600 ${Math.max(11, Math.round(s * 0.55))}px "JetBrains Mono", monospace`
       ctx.textAlign = 'center'
       ctx.fillStyle = `rgb(${accent})`
       ctx.fillText('YOU', p.x * s, p.y * s - s * 2.4)
