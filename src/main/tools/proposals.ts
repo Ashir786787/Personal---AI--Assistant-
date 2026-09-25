@@ -1,12 +1,15 @@
 import type { PlannedMove } from './organizer'
 
-export type ProposalKind = 'organize' | 'volume' | 'brightness' | 'launch' | 'mute' | 'schedule'
+export type ProposalKind =
+  'organize' | 'volume' | 'brightness' | 'launch' | 'mute' | 'schedule' | 'write' | 'delete'
 
 export interface ProposalPayload {
   level?: number
   app?: string
   url?: string
   moves?: PlannedMove[]
+  path?: string
+  content?: string
 }
 
 export interface PendingProposal {

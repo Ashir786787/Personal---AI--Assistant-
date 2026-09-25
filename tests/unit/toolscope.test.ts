@@ -24,6 +24,8 @@ function buildRegistry(): ToolRegistry {
     'sandbox_overview',
     'search_files',
     'organize_folder',
+    'write_file',
+    'delete_file',
     'set_volume',
     'toggle_mute',
     'set_brightness',
@@ -43,7 +45,7 @@ describe('agent tool scoping in the main process (spec 5.2)', () => {
     const alice = new Set(TOWN_AGENTS.find((a) => a.id === 'alice')!.tools)
     const names = registry.definitionsFor(alice).map((tool) => tool.name)
     expect(names.sort()).toEqual([...alice].sort())
-    expect(registry.definitionsFor(null).length).toBe(12)
+    expect(registry.definitionsFor(null).length).toBe(14)
   })
 
   it('execute blocks a tool outside the agent allowlist', async () => {

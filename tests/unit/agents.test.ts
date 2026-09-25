@@ -16,7 +16,7 @@ describe('TOWN_AGENTS config (spec 5.2)', () => {
     expect(TOWN_AGENTS.find((a) => a.name === 'DOUG')).toBeUndefined()
   })
 
-  it('assigns tool lists by domain: alice files, bob system, carol routines, dave none', () => {
+  it('assigns tool lists by domain: alice files, bob system, carol routines, dave research', () => {
     const alice = agentConfig('alice')
     const bob = agentConfig('bob')
     const carol = agentConfig('carol')
@@ -26,20 +26,23 @@ describe('TOWN_AGENTS config (spec 5.2)', () => {
       'folder_summary',
       'sandbox_overview',
       'search_files',
-      'organize_folder'
+      'organize_folder',
+      'write_file',
+      'delete_file'
     ])
     expect(bob.tools).toEqual(['set_volume', 'toggle_mute', 'set_brightness', 'launch_app'])
     expect(carol.tools).toEqual(['schedule_routine', 'list_routines', 'delete_routine'])
-    expect(dave.tools).toEqual([])
+    expect(dave.tools).toEqual([
+      'list_folder',
+      'folder_summary',
+      'sandbox_overview',
+      'search_files'
+    ])
   })
 
-  it('dave is the only disconnected agent', () => {
+  it('every town agent is connected', () => {
     for (const agent of TOWN_AGENTS) {
-      if (agent.id === 'dave') {
-        expect(agent.connected).toBe(false)
-      } else {
-        expect(agent.connected).toBe(true)
-      }
+      expect(agent.connected, `${agent.id} should be connected`).toBe(true)
     }
   })
 

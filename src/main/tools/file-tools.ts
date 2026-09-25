@@ -1,11 +1,16 @@
 import { listDirectory, summarizeByType, type FileEntry } from '../fs/listing'
 import { searchWithin } from '../fs/search'
-import { allowedRoots, resolveWithin } from '../fs/scope'
+import {
+  allowedRoots,
+  resolveNewTargetPath,
+  resolveReadablePath,
+  resolveWritablePath
+} from '../fs/scope'
 import { planOrganization } from './organizer'
 import { createProposal } from './proposals'
 import type { ToolDefinition } from '@shared/tools'
 import type { ActionProposal } from '@shared/ipc'
-import { sep } from 'path'
+import { basename, sep } from 'path'
 
 const MAX_LISTED_ITEMS = 40
 
@@ -28,7 +33,7 @@ export const listFolderTool: ToolDefinition = {
 
   async execute(args) {
     const raw = typeof args['path'] === 'string' ? args['path'] : ''
-    const { absolutePath, root } = resolveWithin(raw)
+    const absolutePath = resolveReadablePath(raw)
     const entries = await listDirectory(absolutePath)
 
     if (entries.length === 0) return `"${raw}" is empty.`
@@ -36,7 +41,7 @@ export const listFolderTool: ToolDefinition = {
     const visible = entries.slice(0, MAX_LISTED_ITEMS).map(describeEntry)
     const remainder = entries.length - visible.length
     return [
-      `"${raw}" (${root.split(sep).pop()}) contains ${entries.length} items:`,
+      `"${raw}" contains ${entries.length} items:`,
       ...visible,
       ...(remainder > 0 ? [`…and ${remainder} more`] : [])
     ].join('\n')
@@ -50,7 +55,7 @@ export const folderSummaryTool: ToolDefinition = {
 
   async execute(args) {
     const raw = typeof args['path'] === 'string' ? args['path'] : ''
-    const { absolutePath } = resolveWithin(raw)
+    const absolutePath = resolveReadablePath(raw)
     const entries = await listDirectory(absolutePath)
 
     const folders = entries.filter((e) => e.isDirectory).length
@@ -98,7 +103,7 @@ export function createOrganizeFolderTool(
 
     async execute(args) {
       const raw = typeof args['path'] === 'string' ? args['path'] : ''
-      const { absolutePath } = resolveWithin(raw)
+      const absolutePath = resolveWritablePath(raw)
       const entries = await listDirectory(absolutePath)
       const sourceName =
         raw
@@ -167,6 +172,84 @@ const searchFilesTool: ToolDefinition = {
   }
 }
 
+export function createWriteFileTool(
+  emitProposal: (proposal: ActionProposal) => void
+): ToolDefinition {
+  return {
+    name: 'write_file',
+    description:
+      'Propose writing text to a file anywhere on this PC — new file or replacing an existing one. Shows a confirmation dialog; nothing is written until the user approves. Discord, WhatsApp and VS Code paths are refused',
+    mutating: false,
+
+    async execute(args) {
+      const raw = typeof args['path'] === 'string' ? args['path'].trim() : ''
+      const content = typeof args['content'] === 'string' ? args['content'] : ''
+      if (!raw) {
+        return 'TOOL_ERROR: write_file needs a path, e.g. {"path": "C:\\\\Users\\\\<you>\\\\Desktop\\\\notes.txt", "content": "..."}'
+      }
+      if (content.trim().length === 0) {
+        return 'TOOL_ERROR: write_file needs a non-empty "content" argument with the text to write'
+      }
+
+      const absolutePath = resolveNewTargetPath(raw)
+      const name = basename(absolutePath) || absolutePath
+      const proposal = createProposal({
+        kind: 'write',
+        payload: { path: absolutePath, content }
+      })
+
+      emitProposal({
+        id: proposal.id,
+        title: `Write "${name}"`,
+        detailLines: [
+          `Full path: ${absolutePath}`,
+          'Approving creates this file, or replaces it entirely if it already exists.'
+        ],
+        totalMoves: 1
+      })
+
+      return `A confirmation dialog for writing "${name}" was shown to the user. Wait for their decision. Nothing has been written yet — never claim otherwise`
+    }
+  }
+}
+
+export function createDeleteFileTool(
+  emitProposal: (proposal: ActionProposal) => void
+): ToolDefinition {
+  return {
+    name: 'delete_file',
+    description:
+      'Propose permanently deleting a file or folder anywhere on this PC. Shows a confirmation dialog; nothing is deleted until the user approves. Discord, WhatsApp and VS Code paths are refused',
+    mutating: false,
+
+    async execute(args) {
+      const raw = typeof args['path'] === 'string' ? args['path'].trim() : ''
+      if (!raw) {
+        return 'TOOL_ERROR: delete_file needs a path, e.g. {"path": "C:\\\\Users\\\\<you>\\\\Desktop\\\\old.txt"}'
+      }
+
+      const absolutePath = resolveWritablePath(raw)
+      const name = basename(absolutePath) || absolutePath
+      const proposal = createProposal({
+        kind: 'delete',
+        payload: { path: absolutePath }
+      })
+
+      emitProposal({
+        id: proposal.id,
+        title: `Delete "${name}"`,
+        detailLines: [
+          `Full path: ${absolutePath}`,
+          'Approving permanently deletes this — it does not go to the Recycle Bin.'
+        ],
+        totalMoves: 1
+      })
+
+      return `A confirmation dialog for deleting "${name}" was shown to the user. Wait for their decision. Nothing has been deleted yet — never claim otherwise`
+    }
+  }
+}
+
 export function readOnlyFileTools(
   emitProposal: (proposal: ActionProposal) => void
 ): ToolDefinition[] {
@@ -175,6 +258,8 @@ export function readOnlyFileTools(
     folderSummaryTool,
     sandboxOverviewTool,
     searchFilesTool,
-    createOrganizeFolderTool(emitProposal)
+    createOrganizeFolderTool(emitProposal),
+    createWriteFileTool(emitProposal),
+    createDeleteFileTool(emitProposal)
   ]
 }

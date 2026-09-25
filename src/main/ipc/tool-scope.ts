@@ -13,10 +13,12 @@ export function scopedToolUsage(definitions: ToolDefinition[]): string {
     'Available tools:',
     ...toolLines,
     'Rules:',
-    'Only these folders are reachable: Downloads, Documents, Desktop, Pictures.',
+    'You can read anywhere on this PC and — after the user approves — write or delete files anywhere too.',
+    'Discord, WhatsApp and VS Code files and folders are hard-blocked; never touch them, even with approval.',
     'Never claim a confirmation dialog is open, waiting, or was shown unless the immediately preceding RESULT says one was shown.',
     'A [SYSTEM ACTION REPORT] message is ground truth about what really happened after approval.',
+    'Never claim a file was written, modified or deleted unless an immediately following [SYSTEM ACTION REPORT] confirms it.',
     'After you receive a TOOL_RESULT, answer the user in normal prose using it.',
-    'Never claim to have modified anything. You cannot modify files yet.'
+    'Keep answers short: one to three sentences is the default.'
   ].join('\n')
 }

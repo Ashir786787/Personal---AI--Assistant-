@@ -3,7 +3,15 @@ import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { listDirectory, summarizeByType } from '../../src/main/fs/listing'
-import { PathScopeError, resolveWithin, setAllowedRootsOverride } from '../../src/main/fs/scope'
+import {
+  isExcludedAppPath,
+  isProtectedWritePath,
+  PathScopeError,
+  resolveReadablePath,
+  resolveNewTargetPath,
+  resolveWritablePath,
+  setAllowedRootsOverride
+} from '../../src/main/fs/scope'
 
 let sandbox = ''
 let fakeRoot = ''
@@ -20,21 +28,20 @@ afterEach(() => {
   rmSync(sandbox, { recursive: true, force: true })
 })
 
-describe('resolveWithin path sandbox', () => {
+describe('readable path sandbox', () => {
   it('resolves a folder that lives inside an allowed root', () => {
     mkdirSync(join(fakeRoot, 'invoices'))
-    const result = resolveWithin('invoices')
-    expect(result.absolutePath.toLowerCase()).toContain('invoices')
-    expect(result.root.toLowerCase()).toBe(fakeRoot.toLowerCase())
+    const result = resolveReadablePath('invoices')
+    expect(result.toLowerCase()).toContain('invoices')
   })
 
   it('rejects absolute paths into system directories', () => {
-    expect(() => resolveWithin('C:\\Windows\\System32')).toThrow(PathScopeError)
-    expect(() => resolveWithin('C:\\Program Files\\SomeApp')).toThrow(PathScopeError)
+    expect(() => resolveReadablePath('C:\\Windows\\System32')).toThrow(PathScopeError)
+    expect(() => resolveReadablePath('C:\\Program Files\\SomeApp')).toThrow(PathScopeError)
   })
 
   it('rejects traversal attempts even with sneaky casing', () => {
-    expect(() => resolveWithin('..\\..\\windows')).toThrow(PathScopeError)
+    expect(() => resolveReadablePath('..\\..\\windows')).toThrow(PathScopeError)
   })
 
   it('blocks junction redirection escaping the sandbox', () => {
@@ -44,18 +51,51 @@ describe('resolveWithin path sandbox', () => {
     symlinkSync(outside, trapdoor, 'junction')
 
     try {
-      expect(() => resolveWithin('innocent-folder')).toThrow(PathScopeError)
+      expect(() => resolveReadablePath('innocent-folder')).toThrow(PathScopeError)
     } finally {
       rmSync(trapdoor, { recursive: true, force: true })
     }
   })
 
   it('reports missing absolute targets in plain language', () => {
-    expect(() => resolveWithin(join(fakeRoot, 'no-such-folder-xyz'))).toThrow(/does not exist/i)
+    expect(() => resolveReadablePath(join(fakeRoot, 'no-such-folder-xyz'))).toThrow(
+      /does not exist/i
+    )
   })
 
   it('reports unmatched relative names without leaking internals', () => {
-    expect(() => resolveWithin('totally-unknown')).toThrow(/Could not match/i)
+    expect(() => resolveReadablePath('totally-unknown')).toThrow(/Could not match/i)
+  })
+
+  it('writable resolution in the sandbox still guards the root', () => {
+    mkdirSync(join(fakeRoot, 'notes'))
+    expect(resolveWritablePath('notes').toLowerCase()).toContain('notes')
+    expect(() => resolveWritablePath('C:\\Windows\\System32')).toThrow(PathScopeError)
+  })
+
+  it('new-target resolution refuses targets whose parent is missing', () => {
+    mkdirSync(join(fakeRoot, 'existing-dir'))
+    expect(() => resolveNewTargetPath('existing-dir/new-file.txt')).not.toThrow(PathScopeError)
+  })
+})
+
+describe('whole-system exclusion + protected-write rules', () => {
+  it('flags the hard-blocked apps (discord, whatsapp, vs code)', () => {
+    expect(isExcludedAppPath('C:\\Users\\me\\AppData\\Roaming\\Discord')).toBe(true)
+    expect(isExcludedAppPath('D:\\WhatsApp')).toBe(true)
+    expect(isExcludedAppPath('C:\\Program Files\\Microsoft VS Code\\code.exe')).toBe(true)
+    expect(isExcludedAppPath('C:\\Tools\\.vscode\\settings.json')).toBe(true)
+    expect(isExcludedAppPath('C:\\Program Files\\Code.exe')).toBe(true)
+    expect(isExcludedAppPath('C:\\Users\\me\\Desktop\\notes.txt')).toBe(false)
+    expect(isExcludedAppPath('C:\\Users\\me\\Desktop\\document.pdf')).toBe(false)
+  })
+
+  it('protects system write zones', () => {
+    expect(isProtectedWritePath('C:\\Windows\\System32\\drivers')).toBe(true)
+    expect(isProtectedWritePath('C:\\ProgramData\\Microsoft')).toBe(true)
+    expect(isProtectedWritePath('C:\\$Recycle.Bin')).toBe(true)
+    expect(isProtectedWritePath('D:\\')).toBe(true)
+    expect(isProtectedWritePath('C:\\Users\\me\\Desktop')).toBe(false)
   })
 })
 

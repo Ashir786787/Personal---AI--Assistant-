@@ -20,8 +20,15 @@ import { usePowerState } from './hooks/usePowerState'
 import { isPowered } from './state/powerState'
 import { useWakeWord, isWakeEnabledStored, setWakeEnabledStored } from './hooks/useWakeWord'
 import { isSignificantTranscript } from './lib/transcriptFilter'
+import { stripWakePrefix } from './lib/wake-phrases'
 
 const TTS_STORAGE_KEY = 'ashirs.tts-enabled'
+const WAKING_PROMPT = 'Yes, boss?'
+const FOLLOW_UP_PROMPT = 'Anything else, boss?'
+const FIRST_LISTEN_MS = 15000
+const FOLLOW_LISTEN_MS = 7000
+
+type LoopPhase = 'off' | 'awaiting' | 'working' | 'following'
 
 export function App() {
   const { messages, busy, send } = useChat()
@@ -70,18 +77,60 @@ export function App() {
   const handleInterim = useCallback((text: string): void => {
     setDraft(text)
   }, [])
-  const voice = useVoiceRecorder({ onFinal: handleTranscript, onInterim: handleInterim })
+
+  const handleQuietTranscript = useCallback(
+    (text: string): void => {
+      const phase = loopPhaseRef.current
+      if (phase !== 'awaiting' && phase !== 'following') return
+
+      if (!isSignificantTranscript(text)) {
+        setLoopPhase('off')
+        return
+      }
+      const command = stripWakePrefix(text)
+      if (command.length === 0) {
+        setLoopPhase('off')
+        return
+      }
+      setDraft('')
+      setView('core')
+      loopPhaseRef.current = 'working'
+      setLoopPhase('working')
+      sendAndAsk(command)
+    },
+    [sendAndAsk]
+  )
+
+  const voice = useVoiceRecorder({
+    onFinal: handleTranscript,
+    onInterim: handleInterim,
+    onQuiet: handleQuietTranscript
+  })
 
   const voiceRef = useRef(voice)
   voiceRef.current = voice
 
   const [wakeEnabled, setWakeEnabled] = useState(isWakeEnabledStored)
+  const ttsRef = useRef(ttsEnabled)
+  ttsRef.current = ttsEnabled
+
+  const [loopPhase, setLoopPhase] = useState<LoopPhase>('off')
+  const loopPhaseRef = useRef('off' as LoopPhase)
+  loopPhaseRef.current = loopPhase
+  const listeningStartedRef = useRef(false)
+  const speakingPrevRef = useRef(false)
+  const speakingRef = useRef(speaking)
+  speakingRef.current = speaking
 
   const handleWake = useCallback((): void => {
-    if (!poweredRef.current || busyRef.current || voiceRef.current.recording) return
+    if (!poweredRef.current || busyRef.current || loopPhaseRef.current !== 'off') return
+    if (voiceRef.current.recording || speaking) return
     setView('core')
-    voiceRef.current.toggle()
-  }, [])
+    listeningStartedRef.current = false
+    loopPhaseRef.current = 'awaiting'
+    setLoopPhase('awaiting')
+    if (ttsRef.current) speak(WAKING_PROMPT)
+  }, [speak, speaking])
   const wake = useWakeWord({
     enabled: wakeEnabled && powered,
     onWake: handleWake
@@ -99,6 +148,51 @@ export function App() {
       wakeResumeRef.current()
     }
   }, [voice.recording, speaking, wakeEnabled, powered, wake.status])
+
+  // Hands-free loop: after the wake ack (or the follow-up prompt) finishes being
+  // spoken, open the mic and wait for the command. Silence closes it again.
+  useEffect(() => {
+    const phase = loopPhaseRef.current
+    if (phase !== 'awaiting' && phase !== 'following') {
+      listeningStartedRef.current = false
+      return
+    }
+    if (speaking || voiceRef.current.recording || listeningStartedRef.current) return
+    listeningStartedRef.current = true
+    const noSpeechMs = phase === 'awaiting' ? FIRST_LISTEN_MS : FOLLOW_LISTEN_MS
+    voiceRef.current.listen({ quiet: true, noSpeechMs })
+  }, [loopPhase, speaking, voice.recording])
+
+  // While a task runs, wait for the assistant to finish and fall silent, then
+  // offer the follow-up prompt. Skipped while an approval dialog is open.
+  useEffect(() => {
+    const fellSilent = speakingPrevRef.current && !speaking
+    speakingPrevRef.current = speaking
+
+    if (loopPhaseRef.current !== 'working' || busy) return
+    if (ttsEnabled && !fellSilent) return
+    if (proposal !== null) return
+
+    listeningStartedRef.current = false
+    loopPhaseRef.current = 'following'
+    setLoopPhase('following')
+    if (ttsRef.current) speak(FOLLOW_UP_PROMPT)
+  }, [busy, speaking, ttsEnabled, proposal, loopPhase, speak])
+
+  // Safety net: if the assistant answered without triggering TTS, still move to
+  // the follow-up prompt after a short grace period instead of hanging forever.
+  useEffect(() => {
+    if (loopPhaseRef.current !== 'working') return
+    const timer = window.setTimeout(() => {
+      if (loopPhaseRef.current !== 'working' || busyRef.current) return
+      if (speakingRef.current || proposal !== null) return
+      listeningStartedRef.current = false
+      loopPhaseRef.current = 'following'
+      setLoopPhase('following')
+      if (ttsRef.current) speak(FOLLOW_UP_PROMPT)
+    }, 4500)
+    return () => window.clearTimeout(timer)
+  }, [busy, proposal, loopPhase, speak])
 
   const toggleWake = (): void => {
     setWakeEnabled((prev) => {
@@ -166,6 +260,8 @@ export function App() {
     await window.ashirs.clearChat()
     setDraft('')
     stop()
+    loopPhaseRef.current = 'off'
+    setLoopPhase('off')
   }, [stop])
 
   const toggleTts = (): void => {
@@ -184,6 +280,8 @@ export function App() {
     }
     stop()
     if (voice.recording) voiceRef.current.toggle()
+    loopPhaseRef.current = 'off'
+    setLoopPhase('off')
     powerEvent({ type: 'STOP' })
   }
 

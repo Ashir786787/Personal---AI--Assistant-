@@ -14,7 +14,6 @@ const BASE_APPS: AppEntry[] = [
   { command: 'mspaint.exe', args: [], label: 'Paint' },
   { command: 'cmd', args: ['/c', 'start', 'msedge'], label: 'Microsoft Edge', browser: true },
   { command: 'cmd', args: ['/c', 'start', 'chrome'], label: 'Google Chrome', browser: true },
-  { command: 'cmd', args: ['/c', 'start', '', 'code'], label: 'VS Code' },
   { command: 'taskmgr.exe', args: [], label: 'Task Manager' },
   { command: 'cmd', args: ['/c', 'start', 'spotify:'], label: 'Spotify' }
 ]
@@ -27,8 +26,6 @@ const SHORT_ALIASES: Record<string, string> = {
   msedge: 'Microsoft Edge',
   chrome: 'Google Chrome',
   googlechrome: 'Google Chrome',
-  vscode: 'VS Code',
-  code: 'VS Code',
   taskmgr: 'Task Manager'
 }
 

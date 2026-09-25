@@ -11,7 +11,7 @@ const MAX_START_ATTEMPTS = 3
 const RETRY_DELAY_MS = 4000
 
 export function isWakeEnabledStored(): boolean {
-  return localStorage.getItem(ENABLED_KEY) === '1'
+  return localStorage.getItem(ENABLED_KEY) !== '0'
 }
 
 export function setWakeEnabledStored(next: boolean): void {

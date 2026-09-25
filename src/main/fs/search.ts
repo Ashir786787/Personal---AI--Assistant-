@@ -1,6 +1,6 @@
 import { lstatSync, readdirSync } from 'node:fs'
 import { join, relative } from 'path'
-import { resolveWithin } from './scope'
+import { resolveReadablePath } from './scope'
 
 export interface SearchHit {
   fileName: string
@@ -29,7 +29,7 @@ export function searchWithin(
   const query = rawQuery.trim().toLowerCase()
   if (query.length === 0) return []
 
-  const { absolutePath } = resolveWithin(userInput)
+  const absolutePath = resolveReadablePath(userInput)
   const hits: SearchHit[] = []
   let scanned = 0
 

@@ -95,6 +95,35 @@ export function matchesWakePhrase(
  * but "hey jarvis set a reminder" or "hey jarvis what time is it" are real
  * instructions and stay significant.
  */
+/**
+ * Removes the matched wake phrase from a transcript, wherever it appears.
+ * "hey jarvis set a reminder" → "set a reminder". Returns an empty string when
+ * the utterance was only the wake phrase itself.
+ */
+export function stripWakePrefix(text: string): string {
+  const normalized = normalizeForWake(text)
+  if (normalized.length === 0) return ''
+  const tokens = normalized.split(' ')
+
+  for (const phrase of WAKE_PHRASES) {
+    const phraseTokens = phrase.split(' ')
+    const windowSize = phraseTokens.length
+    if (tokens.length < windowSize) continue
+    for (let start = 0; start <= tokens.length - windowSize; start++) {
+      const slice = tokens.slice(start, start + windowSize).join(' ')
+      if (levenshtein(slice, phrase) <= toleranceFor(phrase.length)) {
+        return tokens
+          .slice(0, start)
+          .concat(tokens.slice(start + windowSize))
+          .filter((token) => !WAKE_FILLER_WORDS.has(token))
+          .join(' ')
+          .trim()
+      }
+    }
+  }
+  return tokens.join(' ')
+}
+
 export function isWakePhraseAlone(text: string): boolean {
   const normalized = normalizeForWake(text)
   if (normalized.length === 0) return false

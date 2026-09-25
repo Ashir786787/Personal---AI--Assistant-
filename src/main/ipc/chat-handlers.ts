@@ -15,12 +15,16 @@ import { scopedToolUsage } from './tool-scope'
 import { extractToolAction } from '../tools/parse'
 import { getProposal, resolveProposal, type PendingProposal } from '../tools/proposals'
 import { executeOrganizationPlan } from '../fs/executor'
+import { isExcludedAppPath, isProtectedWritePath } from '../fs/scope'
 import { setVolume, toggleMute } from '../system/volume'
 import { setBrightness } from '../system/brightness'
 import { launchApp } from '../system/apps'
 import { addRoutine } from '../routines/store'
 import { NUDGE_MESSAGE, shouldNudge } from '../tools/nudge'
+import { maybeDelegateComplex } from '../tools/orchestrator'
 import { log } from '../lib/logger'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { basename, dirname } from 'path'
 
 const MAX_INPUT_LENGTH = 8000
 const PROVIDER_TIMEOUT_MS = 45_000
@@ -113,6 +117,32 @@ export function registerChatIpc(
     const runtime = runtimeFor(request.agentId, memory, agentMemories, registry)
 
     const userMessage = runtime.memory.append('user', request.text)
+
+    // Hard multi-part requests get delegated to the town agents first. Their
+    // reports land in memory so the supervisor answers with real evidence.
+    let delegated = false
+    if (request.agentId === undefined) {
+      const result = await maybeDelegateComplex({
+        router,
+        registry,
+        agentMemories,
+        controller,
+        userText: request.text,
+        getApiKey: (provider) => getApiKey(provider),
+        emit
+      })
+      delegated = result.handled
+      if (delegated) {
+        for (const report of result.reports) {
+          runtime.memory.append('user', `[AGENT REPORT (${report.name})]\n${report.text}`)
+        }
+        if (result.reports.length === 0 || controller.signal.aborted) {
+          emit({ type: 'cancelled' })
+          return { userMessageId: userMessage.id }
+        }
+      }
+    }
+
     const turns: ChatTurn[] = [
       { role: 'system', content: `${runtime.systemPrompt}\n\n${runtime.instructions}` },
       ...runtime.memory
@@ -173,6 +203,10 @@ export function registerChatIpc(
         return `organize the "${proposal.sourceName ?? p.app ?? 'folder'}" folder`
       case 'schedule':
         return `schedule a routine (${p.app ?? ''})`
+      case 'write':
+        return `write "${proposal.sourceName ?? p.path ?? '?'}"`
+      case 'delete':
+        return `delete "${p.path ?? '?'}"`
       default:
         return proposal.kind
     }
@@ -290,6 +324,32 @@ async function executeApproved(
       if (!folderName || !timeHHMM) return '✗ Routine data was incomplete'
       addRoutine(name ?? `Nightly tidy of ${folderName}`, folderName, timeHHMM)
       const summary = `✓ Scheduled: ${name ?? folderName} runs daily at ${timeHHMM}`
+      announce(summary)
+      return summary
+    }
+
+    if (proposal.kind === 'write') {
+      const target = proposal.payload.path ?? ''
+      const content = proposal.payload.content ?? ''
+      if (!target || content.length === 0) return '✗ Write request was incomplete'
+      if (isExcludedAppPath(target) || isProtectedWritePath(target)) {
+        return '✗ Refused: that path is protected (Discord, WhatsApp, VS Code or a system folder)'
+      }
+      await mkdir(dirname(target), { recursive: true })
+      await writeFile(target, content, 'utf8')
+      const summary = `✓ Wrote ${basename(target)}`
+      announce(summary)
+      return summary
+    }
+
+    if (proposal.kind === 'delete') {
+      const target = proposal.payload.path ?? ''
+      if (!target) return '✗ Delete request was incomplete'
+      if (isExcludedAppPath(target) || isProtectedWritePath(target)) {
+        return '✗ Refused: that path is protected (Discord, WhatsApp, VS Code or a system folder)'
+      }
+      await rm(target, { recursive: true, force: false })
+      const summary = `✓ Deleted ${basename(target)}`
       announce(summary)
       return summary
     }

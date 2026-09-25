@@ -1,4 +1,4 @@
-import { resolveWithin } from '../fs/scope'
+import { resolveWritablePath } from '../fs/scope'
 import { listDirectory } from '../fs/listing'
 import { planOrganization } from '../tools/organizer'
 import { executeOrganizationPlan } from '../fs/executor'
@@ -29,7 +29,7 @@ export function isRoutineDue(
 }
 
 export async function runOrganizeRoutine(folderName: string): Promise<string> {
-  const { absolutePath } = resolveWithin(folderName)
+  const absolutePath = resolveWritablePath(folderName)
   const entries = await listDirectory(absolutePath)
   const sourceName =
     folderName

@@ -23,7 +23,10 @@ export const TOOL_USAGE: Record<string, string> = {
   launch_app: '{"app": "Google Chrome", "url": "https://youtube.com"}',
   schedule_routine: '{"path": "Downloads", "time": "21:00"}',
   list_routines: '{}',
-  delete_routine: '{"id": "<id from list_routines>"}'
+  delete_routine: '{"id": "<id from list_routines>"}',
+  write_file:
+    '{"path": "C:\\\\Users\\\\<you>\\\\Desktop\\\\notes.txt", "content": "text to write"}',
+  delete_file: '{"path": "C:\\\\Users\\\\<you>\\\\Desktop\\\\old-note.txt"}'
 }
 
 export const TOOL_PROTOCOL_INSTRUCTIONS = [
@@ -44,14 +47,18 @@ export const TOOL_PROTOCOL_INSTRUCTIONS = [
   '- schedule_routine {"path": "Downloads", "time": "21:00"} — propose a daily auto-organize routine; user approves',
   '- list_routines {} — show scheduled routines with ids and last results',
   '- delete_routine {"id": "<id>"} — remove a scheduled routine',
+  '- write_file {"path": "C:\\\\Users\\\\<you>\\\\Desktop\\\\notes.txt", "content": "..."} — propose writing text to a file (new or replaced); user approves first',
+  '- delete_file {"path": "C:\\\\Users\\\\<you>\\\\Desktop\\\\old.txt"} — propose permanently deleting a file or folder; user approves first',
   'Rules:',
-  'Only these folders are reachable: Downloads, Documents, Desktop, Pictures.',
+  'You can read anywhere on this PC and — after the user approves — write or delete files anywhere too.',
+  'Discord, WhatsApp and VS Code files and folders are hard-blocked and can never be read, written or deleted. Do not propose touching them.',
   'When the user asks to open, visit or search a website, use launch_app with app Microsoft Edge or Google Chrome and the url argument — one action covers the whole request.',
   'Never claim a confirmation dialog is open, waiting, or was shown unless the immediately preceding TOOL_RESULT says one was shown.',
   'Old failures in this conversation history came from an older version and are obsolete — current tools work. For any request to open, launch, browse or search the web, reply with the launch_app action immediately instead of describing steps.',
   'A [SYSTEM ACTION REPORT] message is ground truth about what really happened after approval. Trust it over any assumption.',
   'After you receive a TOOL_RESULT, answer the user in normal prose using it.',
-  'Never claim to have modified anything. You cannot modify files yet.',
+  'Never claim a file was written, modified or deleted unless an immediately following [SYSTEM ACTION REPORT] confirms it.',
+  'Keep answers short: one to three sentences is the default. Only give longer explanations or steps when the user explicitly asks for detail.',
   '',
   'ABSOLUTE TRUTH RULES — these override everything else:',
   "You have NO knowledge of the user's files. None.",

@@ -25,14 +25,23 @@ export const TOWN_AGENTS: readonly TownAgentConfig[] = [
     name: 'ALICE',
     title: 'Alice Files',
     domain: 'FILES',
-    tools: ['list_folder', 'folder_summary', 'sandbox_overview', 'search_files', 'organize_folder'],
+    tools: [
+      'list_folder',
+      'folder_summary',
+      'sandbox_overview',
+      'search_files',
+      'organize_folder',
+      'write_file',
+      'delete_file'
+    ],
     connected: true,
     motto: 'flattening the Downloads pile',
     systemPrompt: [
       "You are ALICE, ASHIR's file agent living in his Agent Town.",
       'You handle anything about files and folders and use only your file tools.',
       'Be brief and factual. Never name, count or describe a file unless the exact name appears in a TOOL_RESULT.',
-      'Propose organizing only when it clearly helps; never invent a plan.'
+      'Propose organizing only when it clearly helps; never invent a plan.',
+      'Writes, deletes and moves all go through the normal confirmation dialog — never claim anything changed until the result says so.'
     ].join(' ')
   },
   {
@@ -68,11 +77,14 @@ export const TOWN_AGENTS: readonly TownAgentConfig[] = [
     name: 'DAVE',
     title: 'Dave Research',
     domain: 'RESEARCH',
-    tools: [],
-    connected: false,
-    motto: 'has no research tool yet',
+    tools: ['list_folder', 'folder_summary', 'sandbox_overview', 'search_files'],
+    connected: true,
+    motto: 'digging through your files for answers',
     systemPrompt: [
-      "You are DAVE, ASHIR's research agent. You have no tools connected yet, so you cannot accept tasks."
+      "You are DAVE, ASHIR's research agent living in his Agent Town.",
+      'You research whatever Ashir needs by searching his own files with your tools: list_folder, folder_summary, sandbox_overview and search_files.',
+      'Always run a search or listing before drawing a conclusion; never invent filenames, counts or locations.',
+      'Return a short factual report using only what your TOOL_RESULTs show, then stop.'
     ].join(' ')
   }
 ]

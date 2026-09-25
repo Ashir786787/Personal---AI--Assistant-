@@ -14,6 +14,7 @@ export type StreamEvent =
   | { type: 'start'; provider: ProviderId; model: string }
   | { type: 'delta'; text: string }
   | { type: 'tool'; name: string; argsSummary: string }
+  | { type: 'agent'; name: string; state: 'start' | 'done' }
   | { type: 'done'; provider: ProviderId; model: string }
   | { type: 'error'; message: string; recoverable: boolean }
   | { type: 'cancelled' }

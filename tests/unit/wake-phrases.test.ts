@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { matchesWakePhrase, normalizeForWake } from '../../src/renderer/src/lib/wake-phrases'
+import {
+  matchesWakePhrase,
+  normalizeForWake,
+  stripWakePrefix
+} from '../../src/renderer/src/lib/wake-phrases'
 
 describe('normalizeForWake', () => {
   it('lowercases and strips punctuation', () => {
@@ -47,5 +51,29 @@ describe('matchesWakePhrase', () => {
 
   it('is punctuation insensitive', () => {
     expect(matchesWakePhrase('Hey! Dude?')).toBe('hey dude')
+  })
+})
+
+describe('stripWakePrefix', () => {
+  it('removes a leading wake phrase', () => {
+    expect(stripWakePrefix('hey jarvis set a reminder')).toBe('set a reminder')
+    expect(stripWakePrefix('hey dude whats the time')).toBe('whats the time')
+  })
+
+  it('removes the phrase even when words precede it', () => {
+    expect(stripWakePrefix('okay so hey ashirs ai open spotify')).toBe('okay so open spotify')
+  })
+
+  it('returns an empty string for a bare wake phrase', () => {
+    expect(stripWakePrefix('hey jarvis')).toBe('')
+    expect(stripWakePrefix('jarvis huh')).toBe('')
+  })
+
+  it('leaves unrelated text untouched', () => {
+    expect(stripWakePrefix('what time is it in karachi')).toBe('what time is it in karachi')
+  })
+
+  it('tolerates small recognition errors while stripping', () => {
+    expect(stripWakePrefix('hay jarvis turn up the volume')).toBe('turn up the volume')
   })
 })

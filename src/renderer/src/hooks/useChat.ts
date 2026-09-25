@@ -72,6 +72,17 @@ export function useChat() {
           stream.current = { messageId: null, provider: null }
           break
         }
+        case 'agent': {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `agent-${event.name}-${event.state}-${Date.now()}`,
+              role: 'tool',
+              content: event.state === 'start' ? `${event.name} is on it` : `${event.name} finished`
+            }
+          ])
+          break
+        }
         case 'done': {
           const { messageId } = stream.current
           if (messageId) {

@@ -26,7 +26,7 @@ describe('app launch whitelist', () => {
     expect(isSupportedApp('file explorer')).toBe(true)
     expect(isSupportedApp('Google Chrome')).toBe(true)
     expect(isSupportedApp('Microsoft Edge')).toBe(true)
-    expect(isSupportedApp('vs code')).toBe(true)
+    expect(isSupportedApp('vs code')).toBe(false)
   })
 
   it('resolves the real browser name into spawn args (regression: dropped arg)', () => {
