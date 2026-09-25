@@ -68,6 +68,11 @@ export function VoiceOrb({
     canvas.height = cssSize * dpr
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
+    const reducedMotion =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const calm = reducedMotion ? 0.3 : 1
+
     const particles = buildSphere(PARTICLE_COUNT)
     const center = cssSize / 2
     let rotation = 0
@@ -93,13 +98,13 @@ export function VoiceOrb({
       const micLevel = Math.max(0, Math.min(1, levelRef.current))
 
       const speed =
-        current === 'off'
+        (current === 'off'
           ? 0.0001
           : current === 'thinking'
-            ? 0.0032
+            ? 0.0018
             : current === 'listening'
-              ? 0.0012
-              : 0.0006
+              ? 0.0008
+              : 0.0004) * calm
       rotation += speed * dt
 
       const baseRadius =
@@ -109,7 +114,7 @@ export function VoiceOrb({
             ? 74
             : current === 'listening'
               ? 84 + micLevel * 46
-              : 86 + Math.sin(tSec * 1.1) * 6
+              : 86 + Math.sin(tSec * 0.7) * (5 * calm)
 
       ctx.clearRect(0, 0, cssSize, cssSize)
 
@@ -137,7 +142,7 @@ export function VoiceOrb({
       ctx.stroke()
 
       if (current === 'thinking') {
-        const dashOffset = -(tSec * 60) % 24
+        const dashOffset = -(tSec * 40 * calm) % 24
         ctx.setLineDash([10, 14])
         ctx.lineDashOffset = dashOffset
         ctx.strokeStyle = `rgb(${accentTriplet} / 0.4)`
@@ -160,12 +165,12 @@ export function VoiceOrb({
         const depth = p.y * sinT + rz * cosT
 
         const wobble = dimmed
-          ? Math.sin(tSec * 0.4 + p.y * 3) * 0.8
+          ? Math.sin(tSec * 0.3 + p.y * 3) * 0.6
           : current === 'thinking'
-            ? Math.sin(tSec * 6 + p.size * 9) * 5
+            ? Math.sin(tSec * 3 + p.size * 9) * (3 * calm)
             : current === 'listening'
-              ? micLevel * Math.sin(tSec * 8 + p.size * 7) * 6
-              : Math.sin(tSec * 2 + p.y * 5) * 2.2
+              ? micLevel * Math.sin(tSec * 4 + p.size * 7) * (4 * calm)
+              : Math.sin(tSec * 1.2 + p.y * 5) * (1.6 * calm)
 
         const r = baseRadius + wobble
         const perspective = 320 / (320 - depth * r * 0.55)

@@ -7,6 +7,8 @@ export type WakeStatus =
 
 const ENABLED_KEY = 'ashirs.wake-enabled'
 const SENSITIVITY_KEY = 'ashirs.wake-sensitivity'
+const MAX_START_ATTEMPTS = 3
+const RETRY_DELAY_MS = 4000
 
 export function isWakeEnabledStored(): boolean {
   return localStorage.getItem(ENABLED_KEY) === '1'
@@ -59,6 +61,7 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
   const hooksRef = useRef(onWake)
   hooksRef.current = onWake
   const healthRef = useRef<number | null>(null)
+  const attemptsRef = useRef(0)
 
   const teardown = useCallback((): void => {
     generationRef.current += 1
@@ -93,6 +96,7 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
 
   const startEngine = useCallback(async (): Promise<void> => {
     const generation = ++generationRef.current
+    attemptsRef.current += 1
     setError(null)
     setDownloadPercent(null)
     setStatus('preparing')
@@ -243,6 +247,14 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
     } catch (err) {
       window.clearTimeout(watchdog)
       if (generation !== generationRef.current) return
+      if (attemptsRef.current < MAX_START_ATTEMPTS) {
+        setStatus('preparing')
+        window.setTimeout(() => {
+          if (generation !== generationRef.current) return
+          void startEngine()
+        }, RETRY_DELAY_MS)
+        return
+      }
       const message = err instanceof Error ? err.message : 'Wake-word engine failed to start'
       setError(message)
       setStatus('error')
@@ -251,6 +263,7 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
 
   useEffect(() => {
     if (enabled) {
+      attemptsRef.current = 0
       void startEngine()
     } else {
       teardown()

@@ -112,7 +112,7 @@ export function SettingsPanel({
       case 'suspended':
         return 'Standing by while I listen to you'
       case 'error':
-        return 'Engine error — toggle off and on to retry'
+        return 'Engine error after retries — toggle off and on to retry'
       default:
         return 'Off'
     }

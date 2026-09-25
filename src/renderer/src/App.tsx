@@ -100,13 +100,6 @@ export function App() {
     }
   }, [voice.recording, speaking, wakeEnabled, powered, wake.status])
 
-  useEffect(() => {
-    if (wakeEnabled && powered && wake.status === 'error') {
-      setWakeEnabled(false)
-      setTimeout(() => setWakeEnabled(true), 1000)
-    }
-  }, [wakeEnabled, powered, wake.status])
-
   const toggleWake = (): void => {
     setWakeEnabled((prev) => {
       setWakeEnabledStored(!prev)

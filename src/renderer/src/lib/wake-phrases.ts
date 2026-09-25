@@ -1,5 +1,6 @@
 export const WAKE_PHRASES = [
   'hey jarvis',
+  'hi jarvis',
   'hey dude',
   'hey ashirs ai',
   'hey ashirs',
