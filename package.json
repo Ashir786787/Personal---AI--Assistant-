@@ -1,6 +1,6 @@
 {
   "name": "ashirs-ai",
-  "version": "1.5.14",
+  "version": "1.6.0",
   "description": "Ashir's AI â€” a secure, local-first personal desktop assistant",
   "main": "./out/main/index.js",
   "author": "M. Ashir Mushtaq <m.ashirmushtaq@gmail.com>",
@@ -30,6 +30,12 @@
     },
     "files": [
       "out/**"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/vosk-browser/dist/ashirs-kaldi-worker.js",
+        "to": "vosk/ashirs-kaldi-worker.js"
+      }
     ],
     "asarUnpack": [],
     "publish": {
