@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import type { ProviderKeyStatus, WakeModelStateInfo } from '@shared/ipc'
+import type { MemorySummary, ProviderKeyStatus, WakeModelStateInfo } from '@shared/ipc'
 import { THEME_ACCENT, THEME_IDS, THEME_LABEL, type ThemeId } from '../../theme'
 import { useUpdater, updateLabel } from '../../hooks/useUpdater'
 import type { WakeStatus } from '../../hooks/useWakeWord'
+import { systemPrefersReducedMotion, type MotionSetting } from '../../hooks/useReducedMotion'
 
 interface Props {
   onClose: () => void
@@ -14,6 +15,8 @@ interface Props {
   wakeError: string | null
   wakePhrases: readonly string[]
   onToggleWake: () => void
+  motionSetting: MotionSetting
+  onSetMotionSetting: (next: MotionSetting) => void
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
@@ -27,7 +30,9 @@ export function SettingsPanel({
   wakeDownloadPercent,
   wakeError,
   wakePhrases,
-  onToggleWake
+  onToggleWake,
+  motionSetting,
+  onSetMotionSetting
 }: Props): JSX.Element {
   const [status, setStatus] = useState<ProviderKeyStatus>({ gemini: false, groq: false })
   const [geminiKey, setGeminiKey] = useState('')
@@ -36,6 +41,8 @@ export function SettingsPanel({
   const [error, setError] = useState<string | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
   const [clearing, setClearing] = useState(false)
+  const [clearNote, setClearNote] = useState<string | null>(null)
+  const [summary, setSummary] = useState<MemorySummary | null>(null)
   const { status: updateStatus, check } = useUpdater()
   const [appVersion, setAppVersion] = useState('')
   const [checkNote, setCheckNote] = useState<string | null>(null)
@@ -67,9 +74,22 @@ export function SettingsPanel({
   const doClear = async (really: boolean): Promise<void> => {
     if (!really) return
     setClearing(true)
+    setClearNote(null)
     try {
-      await window.ashirs.clearChat()
+      // "Delete all my data" has to reach the four town agents' memories too, so this
+      // reports exactly what was wiped and what was not.
+      const result = await window.ashirs.clearAllMemory()
       setConfirmClear(false)
+      const total = result.cleared.length
+      setClearNote(
+        result.failed.length === 0
+          ? `Erased ${total} store${total === 1 ? '' : 's'} on this machine.`
+          : `Erased ${total} store${total === 1 ? '' : 's'}, but ${result.failed.join(', ')} could not be erased.`
+      )
+      const summary = await window.ashirs.memorySummary()
+      setSummary(summary)
+    } catch (err) {
+      setClearNote(err instanceof Error ? err.message : 'Could not erase the data')
     } finally {
       setClearing(false)
     }
@@ -77,6 +97,7 @@ export function SettingsPanel({
 
   useEffect(() => {
     void window.ashirs.getKeyStatus().then(setStatus)
+    void window.ashirs.memorySummary().then(setSummary)
   }, [])
 
   const save = async (provider: 'gemini' | 'groq', key: string): Promise<void> => {
@@ -176,6 +197,30 @@ export function SettingsPanel({
                     style={{ backgroundColor: THEME_ACCENT[id] }}
                   />
                   {THEME_LABEL[id]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="settings-row">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            <div className="settings-provider">
+              <strong>Reduce motion</strong>
+              <span>
+                Stops interface animation. Auto follows the Windows setting
+                {systemPrefersReducedMotion() ? ', which is currently on' : ''}.
+              </span>
+            </div>
+            <div className="flex flex-1 gap-2" role="group" aria-label="Reduce motion">
+              {(['auto', 'reduced'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={motionSetting === option}
+                  className={`theme-pill ${motionSetting === option ? 'theme-pill-active' : ''}`}
+                  onClick={() => onSetMotionSetting(option)}
+                >
+                  {option === 'auto' ? 'Auto' : 'Always reduce'}
                 </button>
               ))}
             </div>
@@ -282,12 +327,21 @@ export function SettingsPanel({
           <div className="settings-row settings-row-top">
             <span className="h-1.5 w-1.5 rounded-full bg-warning" />
             <div className="settings-provider">
-              <strong>Conversation</strong>
-              <span>Wipes chat history from this machine</span>
+              <strong>Delete all my data</strong>
+              <span>
+                Erases the chat and every town agent&apos;s memory on this machine
+                {summary !== null &&
+                  ` — ${summary.storeCount} store${summary.storeCount === 1 ? '' : 's'}, ${
+                    summary.messageCount + summary.agentMessageCount
+                  } message${summary.messageCount + summary.agentMessageCount === 1 ? '' : 's'} right now`}
+                . Keys stay encrypted and are kept until you clear them above.
+              </span>
             </div>
             {confirmClear ? (
               <div className="flex flex-1 items-center gap-2">
-                <span className="text-xs text-warning">Erase all memory?</span>
+                <span className="text-xs text-warning">
+                  Erase all {summary?.storeCount ?? 5} stores?
+                </span>
                 <button
                   className="btn-cancel btn-small"
                   disabled={clearing}
@@ -305,10 +359,11 @@ export function SettingsPanel({
               </div>
             ) : (
               <button className="btn-cancel btn-small" onClick={() => setConfirmClear(true)}>
-                Clear conversation
+                Delete all my data
               </button>
             )}
           </div>
+          {clearNote && <p className="settings-err">{clearNote}</p>}
         </div>
 
         <div className="confirm-actions">

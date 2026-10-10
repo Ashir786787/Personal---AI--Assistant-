@@ -1,7 +1,24 @@
-# UI-INVENTORY.md — hardcoded colors and font sizes (pre-UI-0 audit)
+# UI-INVENTORY.md — status of the pre-UI-0 hardcode audit
 
-Reference for the token migration in `docs/UI-SPEC.md` section 3. Every entry below was extracted
-from the codebase before the redesign and should be replaced by a design token or a primitive.
+Reference for the token migration in `docs/UI-SPEC.md` section 3. The tables below
+were extracted from the codebase **before** the redesign and are kept as the
+before-picture. Status as of v1.5.14:
+
+- Every hardcoded hex listed under "Hardcoded hex colors" has been replaced by a
+  token (`--c-*`, mapped from the spec tone keys). The only value that ever lagged
+  was `.btn-approve`'s text color, which now reads `rgb(var(--c-base))` instead of
+  a raw `#17130a`.
+- Every "Hardcoded font sizes" entry was replaced. No `text-[9px]` or
+  `text-[10px]` remains in `src/renderer/src/**/*.tsx`, and no
+  `font-size` below `11px` remains in `global.css`. Mono captions and labels
+  across chat, approvals, town, world, headlines, clocks and system views all
+  use `text-[11px]` per the spec's 11px caps rule.
+- The "Neutral surfaces to convert" note is done: glass and hover overlays derive
+  from the panel tones.
+
+**Line numbers below refer to the pre-migration files and are kept only as
+history. Do not use them to locate current code** — read `global.css` and
+`src/renderer/src/components/ui/` for the current state.
 
 ## Hardcoded hex colors (no token)
 

@@ -9,7 +9,8 @@ import {
 import { planOrganization } from './organizer'
 import { createProposal } from './proposals'
 import type { ToolDefinition } from '@shared/tools'
-import type { ActionProposal } from '@shared/ipc'
+import type { ProposalCardDraft } from '@shared/ipc'
+import { stat } from 'node:fs/promises'
 import { basename, sep } from 'path'
 
 const MAX_LISTED_ITEMS = 40
@@ -43,7 +44,7 @@ export const listFolderTool: ToolDefinition = {
     return [
       `"${raw}" contains ${entries.length} items:`,
       ...visible,
-      ...(remainder > 0 ? [`…and ${remainder} more`] : [])
+      ...(remainder > 0 ? [`â€¦and ${remainder} more`] : [])
     ].join('\n')
   }
 }
@@ -93,7 +94,7 @@ export const sandboxOverviewTool: ToolDefinition = {
 }
 
 export function createOrganizeFolderTool(
-  emitProposal: (proposal: ActionProposal) => void
+  emitProposal: (draft: ProposalCardDraft) => void
 ): ToolDefinition {
   return {
     name: 'organize_folder',
@@ -123,10 +124,10 @@ export function createOrganizeFolderTool(
         payload: { moves: plan.moves }
       })
 
-      const preview = plan.moves.slice(0, 10).map((m) => `${m.fileName} → ${m.toSubfolder}`)
+      const preview = plan.moves.slice(0, 10).map((m) => `${m.fileName} â†’ ${m.toSubfolder}`)
       const detailLines = [
         ...preview,
-        ...(plan.moves.length > 10 ? [`…and ${plan.moves.length - 10} more`] : []),
+        ...(plan.moves.length > 10 ? [`â€¦and ${plan.moves.length - 10} more`] : []),
         ...(plan.skippedFolders > 0 ? [`${plan.skippedFolders} folders will be left alone`] : [])
       ]
 
@@ -139,7 +140,7 @@ export function createOrganizeFolderTool(
 
       return (
         `A plan proposing ${plan.moves.length} file moves was shown to the user for approval (proposal ${proposal.id}). ` +
-        'Tell them to review it and press Approve or Cancel. Nothing has moved yet — never claim files were moved'
+        'Tell them to review it and press Approve or Cancel. Nothing has moved yet â€” never claim files were moved'
       )
     }
   }
@@ -165,20 +166,20 @@ const searchFilesTool: ToolDefinition = {
 
     const lines = hits
       .slice(0, 15)
-      .map((hit) => `- ${hit.fileName}${hit.isDirectory ? '/' : ''} · ${hit.relativePath}`)
-    const overflow = hits.length > 15 ? `\n…and ${hits.length - 15} more matches` : ''
+      .map((hit) => `- ${hit.fileName}${hit.isDirectory ? '/' : ''} Â· ${hit.relativePath}`)
+    const overflow = hits.length > 15 ? `\nâ€¦and ${hits.length - 15} more matches` : ''
 
     return `Found ${hits.length} match${hits.length === 1 ? '' : 'es'} for "${query}" in ${raw}:\n${lines.join('\n')}${overflow}`
   }
 }
 
 export function createWriteFileTool(
-  emitProposal: (proposal: ActionProposal) => void
+  emitProposal: (draft: ProposalCardDraft) => void
 ): ToolDefinition {
   return {
     name: 'write_file',
     description:
-      'Propose writing text to a file anywhere on this PC — new file or replacing an existing one. Shows a confirmation dialog; nothing is written until the user approves. Discord, WhatsApp and VS Code paths are refused',
+      'Propose writing text to a file anywhere on this PC â€” new file or replacing an existing one. Shows a confirmation dialog; nothing is written until the user approves. Discord, WhatsApp and VS Code paths are refused',
     mutating: false,
 
     async execute(args) {
@@ -195,6 +196,7 @@ export function createWriteFileTool(
       const name = basename(absolutePath) || absolutePath
       const proposal = createProposal({
         kind: 'write',
+        sourceName: name,
         payload: { path: absolutePath, content }
       })
 
@@ -208,13 +210,13 @@ export function createWriteFileTool(
         totalMoves: 1
       })
 
-      return `A confirmation dialog for writing "${name}" was shown to the user. Wait for their decision. Nothing has been written yet — never claim otherwise`
+      return `A confirmation dialog for writing "${name}" was shown to the user. Wait for their decision. Nothing has been written yet â€” never claim otherwise`
     }
   }
 }
 
 export function createDeleteFileTool(
-  emitProposal: (proposal: ActionProposal) => void
+  emitProposal: (draft: ProposalCardDraft) => void
 ): ToolDefinition {
   return {
     name: 'delete_file',
@@ -230,9 +232,11 @@ export function createDeleteFileTool(
 
       const absolutePath = resolveWritablePath(raw)
       const name = basename(absolutePath) || absolutePath
+      const stats = await stat(absolutePath).catch(() => null)
       const proposal = createProposal({
         kind: 'delete',
-        payload: { path: absolutePath }
+        sourceName: name,
+        payload: { path: absolutePath, isDirectory: stats?.isDirectory() === true }
       })
 
       emitProposal({
@@ -240,18 +244,21 @@ export function createDeleteFileTool(
         title: `Delete "${name}"`,
         detailLines: [
           `Full path: ${absolutePath}`,
-          'Approving permanently deletes this — it does not go to the Recycle Bin.'
+          stats?.isDirectory() === true
+            ? 'This is a FOLDER. Approving permanently deletes everything inside it.'
+            : 'Approving permanently deletes this file â€” it does not go to the Recycle Bin.',
+          'If this path turns into a different kind of target before you approve, the deletion is refused.'
         ],
         totalMoves: 1
       })
 
-      return `A confirmation dialog for deleting "${name}" was shown to the user. Wait for their decision. Nothing has been deleted yet — never claim otherwise`
+      return `A confirmation dialog for deleting "${name}" was shown to the user. Wait for their decision. Nothing has been deleted yet â€” never claim otherwise`
     }
   }
 }
 
 export function readOnlyFileTools(
-  emitProposal: (proposal: ActionProposal) => void
+  emitProposal: (draft: ProposalCardDraft) => void
 ): ToolDefinition[] {
   return [
     listFolderTool,

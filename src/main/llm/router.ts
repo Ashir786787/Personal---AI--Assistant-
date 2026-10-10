@@ -7,12 +7,22 @@ export class ProviderRouter {
   private readonly providers: Map<ProviderId, LlmProvider>
   // Preference order: primary first, fallbacks after. Sticky by design so
   // responses stay on the fast provider until it rate-limits or fails.
-  private readonly order: ProviderId[]
+  private order: ProviderId[]
   private readonly cooldownUntil = new Map<ProviderId, number>()
 
   constructor(providers: LlmProvider[], preferred: ProviderId) {
     this.providers = new Map(providers.map((p) => [p.id, p]))
     const rest = providers.map((p) => p.id).filter((id) => id !== preferred)
+    this.order = [preferred, ...rest]
+  }
+
+  /**
+   * Reorders the fallback chain in place. Used when the startup key probe resolves
+   * after the window is already up, so the probe no longer blocks IPC registration.
+   */
+  setPreferred(preferred: ProviderId): void {
+    if (!this.providers.has(preferred)) return
+    const rest = this.order.filter((id) => id !== preferred)
     this.order = [preferred, ...rest]
   }
 

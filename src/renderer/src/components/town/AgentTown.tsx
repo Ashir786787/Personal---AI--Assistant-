@@ -112,7 +112,7 @@ export function AgentTown({ theme, focused, approvalOpen }: AgentTownProps): JSX
             aria-label="Task for agent"
             className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-muted/60 focus:outline-accent"
           />
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-muted/70">
+          <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.25em] text-ink-muted/70">
             enter submits · esc cancels
           </p>
         </form>

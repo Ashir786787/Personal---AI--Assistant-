@@ -110,7 +110,7 @@ export function HeadlinesFeed({ feed }: { feed: FeedApi }) {
       </p>
 
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink/45">
+        <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-ink/45">
           Quick add
         </span>
         {PRESETS.map((preset) => (
@@ -167,7 +167,7 @@ export function HeadlinesFeed({ feed }: { feed: FeedApi }) {
               {item.text && (
                 <p className="mt-1 text-[11px] leading-snug text-ink/45">{item.text}</p>
               )}
-              <span className="mt-1 block font-mono text-[9px] uppercase tracking-widest text-ink/30">
+              <span className="mt-1 block font-mono text-[11px] uppercase tracking-widest text-ink/30">
                 {item.source.replace('https://', '').slice(0, 30)}
               </span>
             </li>

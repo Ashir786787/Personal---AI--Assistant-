@@ -1,5 +1,5 @@
 import type { ToolAction, ToolDefinition } from '@shared/tools'
-import type { ActionProposal } from '@shared/ipc'
+import type { ProposalCardDraft } from '@shared/ipc'
 import { readOnlyFileTools } from './file-tools'
 import { createSystemTools } from './system-tools'
 import { createRoutineTools } from './routine-tools'
@@ -34,7 +34,7 @@ export class ToolRegistry {
   async execute(action: ToolAction, allowed?: ReadonlySet<string> | null): Promise<string> {
     if (allowed && !allowed.has(action.tool)) {
       throw new ToolExecutionError(
-        `Tool "${action.tool}" is not part of this agent's toolkit — say you cannot do it`
+        `Tool "${action.tool}" is not part of this agent's toolkit â€” say you cannot do it`
       )
     }
     const tool = this.tools.get(action.tool)
@@ -51,7 +51,7 @@ export class ToolRegistry {
     return tool.execute(action.args)
   }
 
-  static withDefaults(emitProposal: (proposal: ActionProposal) => void): ToolRegistry {
+  static withDefaults(emitProposal: (draft: ProposalCardDraft) => void): ToolRegistry {
     const registry = new ToolRegistry()
     for (const tool of [
       ...readOnlyFileTools(emitProposal),

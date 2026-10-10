@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { randomInt } from 'node:crypto'
 import { app } from 'electron'
 import { join } from 'path'
 
@@ -6,6 +7,8 @@ export interface Routine {
   id: string
   name: string
   folderName: string
+  /** Exact folder the user approved; routines saved before this field resolve by name. */
+  folderPath?: string
   timeHHMM: string
   createdAt: number
   lastRunDayKey: string | null
@@ -54,11 +57,16 @@ export function listRoutines(): Routine[] {
   return [...load()].sort((a, b) => a.timeHHMM.localeCompare(b.timeHHMM))
 }
 
-export function addRoutine(name: string, folderName: string, timeHHMM: string): Routine {
+export function addRoutine(name: string, folderPath: string, timeHHMM: string): Routine {
   const routine: Routine = {
-    id: `rt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: `rt-${Date.now()}-${randomInt(1000)}`,
     name,
-    folderName,
+    folderName:
+      folderPath
+        .split(/[\\/]+/)
+        .filter(Boolean)
+        .pop() ?? folderPath,
+    folderPath,
     timeHHMM,
     createdAt: Date.now(),
     lastRunDayKey: null,

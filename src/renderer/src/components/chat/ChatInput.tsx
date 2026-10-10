@@ -1,5 +1,9 @@
 import { useRef } from 'react'
+import { MAX_CHAT_INPUT_LENGTH } from '@shared/chat'
 import { MicButton } from '../voice/MicButton'
+
+const NEAR_CAP_RATIO = 0.9
+const MAX_TEXTAREA_HEIGHT = 144
 
 interface ChatInputProps {
   value: string
@@ -10,7 +14,10 @@ interface ChatInputProps {
   micListening: boolean
   micLevel: number
   voiceNotice: string | null
+  canRegenerate: boolean
   onSend: (text: string) => void
+  onStop: () => void
+  onRegenerate: () => void
   onToggleMic: () => void
   onToggleTts: () => void
 }
@@ -24,25 +31,30 @@ export function ChatInput({
   micListening,
   micLevel,
   voiceNotice,
+  canRegenerate,
   onSend,
+  onStop,
+  onRegenerate,
   onToggleMic,
   onToggleTts
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const overCap = value.length >= MAX_CHAT_INPUT_LENGTH
+  const nearCap = value.length >= MAX_CHAT_INPUT_LENGTH * NEAR_CAP_RATIO
 
   const submit = (): void => {
-    if (value.trim().length === 0 || busy) return
+    if (value.trim().length === 0 || busy || overCap) return
     onSend(value)
     onValueChange('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
 
   const resize = (next: string): void => {
-    onValueChange(next)
+    onValueChange(next.slice(0, MAX_CHAT_INPUT_LENGTH))
     const el = textareaRef.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+    el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`
   }
 
   return (
@@ -50,7 +62,7 @@ export function ChatInput({
       {voiceNotice && <p className="mb-2 font-mono text-[11px] text-warning">{voiceNotice}</p>}
       {!powered && (
         <p className="mb-2 font-mono text-[11px] text-ink-muted">
-          AI is off — press Start AI on the Core view to begin.
+          AI is off â€” press Start AI on the Core view to begin.
         </p>
       )}
       <div className="flex items-end gap-2">
@@ -65,7 +77,9 @@ export function ChatInput({
           rows={1}
           value={value}
           disabled={!powered}
-          placeholder={powered ? "Message ASHIR's AI…" : 'Start AI to begin…'}
+          maxLength={MAX_CHAT_INPUT_LENGTH}
+          aria-label="Message"
+          placeholder={powered ? "Message ASHIR's AIâ€¦" : 'Start AI to beginâ€¦'}
           onChange={(e) => resize(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -73,12 +87,13 @@ export function ChatInput({
               submit()
             }
           }}
-          className="max-h-40 flex-1 resize-none rounded-xl border border-edge bg-base px-4 py-2.5 text-sm text-ink placeholder:text-ink-muted/60 focus:border-accent-dim focus:outline-none disabled:opacity-60"
+          className="max-h-36 flex-1 resize-none rounded-xl border border-edge bg-base px-4 py-2.5 text-sm text-ink placeholder:text-ink-muted/60 focus:border-accent-dim focus:outline-none disabled:opacity-60"
         />
         <button
           type="button"
           onClick={onToggleTts}
           aria-label={ttsEnabled ? 'Mute voice output' : 'Unmute voice output'}
+          title={ttsEnabled ? 'Mute voice output' : 'Unmute voice output'}
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors duration-fast hover:bg-panel-raised ${
             ttsEnabled ? 'text-accent' : 'text-ink-muted'
           }`}
@@ -91,6 +106,7 @@ export function ChatInput({
             strokeWidth="1.8"
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             <path d="M11 5 6 9H3v6h3l5 4V5Z" />
             {ttsEnabled ? (
@@ -103,11 +119,23 @@ export function ChatInput({
             )}
           </svg>
         </button>
+        {busy ? (
+          <button
+            type="button"
+            onClick={onStop}
+            aria-label="Stop generating"
+            title="Stop generating"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-edge bg-panel-raised text-ink transition-colors duration-fast hover:border-accent-dim hover:text-accent"
+          >
+            <span aria-hidden="true" className="h-3.5 w-3.5 rounded-[2px] bg-current" />
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={submit}
-          disabled={busy || !powered || value.trim().length === 0}
+          disabled={busy || !powered || value.trim().length === 0 || overCap}
           aria-label="Send message"
+          title="Send message"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-base transition-opacity duration-fast hover:opacity-90 disabled:opacity-30"
         >
           <svg
@@ -118,10 +146,32 @@ export function ChatInput({
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             <path d="m5 12 14-7-4 7 4 7-14-7Z" />
           </svg>
         </button>
+      </div>
+      <div className="mt-1 flex items-center justify-end gap-3">
+        {canRegenerate && (
+          <button
+            type="button"
+            onClick={onRegenerate}
+            disabled={busy || !powered}
+            title="Regenerate the last answer"
+            className="font-mono text-[11px] text-ink-muted transition-colors duration-fast hover:text-accent disabled:opacity-40"
+          >
+            Regenerate
+          </button>
+        )}
+        <span
+          aria-live="polite"
+          className={`font-mono text-[11px] ${
+            overCap ? 'text-danger' : nearCap ? 'text-warning' : 'text-ink-muted/70'
+          }`}
+        >
+          {value.length} / {MAX_CHAT_INPUT_LENGTH}
+        </span>
       </div>
     </div>
   )

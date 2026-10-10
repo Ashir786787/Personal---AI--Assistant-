@@ -4,6 +4,7 @@ import type { FeedBatch } from '@shared/feed'
 import type {
   ActionProposal,
   AshirsBridge,
+  ClearAllResult,
   MemorySummary,
   ProviderKeyStatus,
   SkillEntry,
@@ -13,14 +14,18 @@ import type {
   VoiceRecording,
   WakeModelStateInfo
 } from '@shared/ipc'
+import type { RegenerateChatResponse } from '@shared/chat'
 import { IPC } from '@shared/ipc'
 
 const bridge: AshirsBridge = {
   sendChat: (request) => ipcRenderer.invoke(IPC.chatSend, request),
+  regenerateChat: () =>
+    ipcRenderer.invoke(IPC.chatRegenerate) as Promise<RegenerateChatResponse | null>,
   cancelChat: () => {
     ipcRenderer.send(IPC.chatCancel)
   },
   clearChat: () => ipcRenderer.invoke(IPC.chatClear) as Promise<void>,
+  clearAllMemory: () => ipcRenderer.invoke(IPC.chatClearAll) as Promise<ClearAllResult>,
   onStreamEvent: (listener) => {
     const wrapped = (_event: unknown, streamEvent: StreamEvent): void => listener(streamEvent)
     ipcRenderer.on(IPC.chatStream, wrapped)

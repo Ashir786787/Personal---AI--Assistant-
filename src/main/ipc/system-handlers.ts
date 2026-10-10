@@ -2,8 +2,9 @@ import { exec } from 'node:child_process'
 import os from 'node:os'
 import { promisify } from 'node:util'
 import { ipcMain } from 'electron'
-import type { SystemStats } from '@shared/ipc'
+import type { MemorySummary, SystemStats } from '@shared/ipc'
 import { IPC } from '@shared/ipc'
+import type { AgentId } from '@shared/agents'
 import type { ConversationMemory } from '../conversation/memory'
 import type { ToolRegistry } from '../tools/registry'
 
@@ -60,7 +61,11 @@ async function readBattery(): Promise<number | null> {
   }
 }
 
-export function registerSystemHandlers(memory: ConversationMemory, registry: ToolRegistry): void {
+export function registerSystemHandlers(
+  memory: ConversationMemory,
+  registry: ToolRegistry,
+  agentMemories: ReadonlyMap<AgentId, ConversationMemory> = new Map()
+): void {
   let lastCpu = takeCpuSnapshot()
   let cachedDisk = { freeGb: null as number | null, totalGb: null as number | null }
   let cachedBattery: number | null = null
@@ -101,9 +106,19 @@ export function registerSystemHandlers(memory: ConversationMemory, registry: Too
     }
   })
 
-  ipcMain.handle(IPC.memorySummary, () => {
+  // Counts every store on disk, so the UI never understates what is kept.
+  ipcMain.handle(IPC.memorySummary, (): MemorySummary => {
     const all = memory.recent(100000)
     const oldest = all.length > 0 ? (all[0]?.createdAt ?? null) : null
-    return { messageCount: all.length, oldestAt: oldest }
+    let agentMessageCount = 0
+    for (const agentMemory of agentMemories.values()) {
+      agentMessageCount += agentMemory.recent(100000).length
+    }
+    return {
+      messageCount: all.length,
+      oldestAt: oldest,
+      agentMessageCount,
+      storeCount: 1 + agentMemories.size
+    }
   })
 }

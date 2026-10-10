@@ -29,13 +29,18 @@ the code line-by-line before any messaging capability ships.
 
 ## Outbound connections (complete list)
 
-| #   | Destination                                    | When                                                                                             | Data sent                                                                | Never sent                        |
-| --- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ | --------------------------------- |
-| 1   | `api.groq.com`                                 | STT (voice), chat fallback                                                                       | audio / prompt text                                                      | file contents not in conversation |
-| 2   | `generativelanguage.googleapis.com`            | Gemini chat + vision (Phase B)                                                                   | prompt text; screenshot ONLY when user explicitly asks a screen question | keys of other providers           |
-| 3   | `github.com` / `objects.githubusercontent.com` | update check + download (electron-updater); wake-word model download (one time, on first enable) | version metadata; the model archive                                      | anything else                     |
+| #   | Destination                                    | When                                                                                             | Data sent                                | Never sent                |
+| --- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------- | ------------------------- |
+| 1   | `api.groq.com`                                 | chat (primary) + STT (voice)                                                                     | the message text you send; audio for STT | files you never mentioned |
+| 2   | `generativelanguage.googleapis.com`            | chat (primary or failover)                                                                       | the message text you send                | keys of other providers   |
+| 3   | `github.com` / `objects.githubusercontent.com` | update check + download (electron-updater); wake-word model download (one time, on first enable) | version metadata; the model archive      | anything else             |
 
 Nothing else. No telemetry, no analytics, no crash reporting endpoints.
+
+Message text is genuinely sent to whichever provider answers, and the app says so
+in the chat empty state and in Settings. File contents reach a provider only when
+they are part of the text you send or a tool result the assistant chose to
+summarize into its reply; the app never uploads a file on its own.
 
 ## Wake word (Vosk — on-device)
 
@@ -61,6 +66,19 @@ Nothing else. No telemetry, no analytics, no crash reporting endpoints.
 vosk-model:`. Embedded fonts load via `font-src 'self' data:`. The dynCall
   shim that used plain `new Function(...)` is still rewritten at install time
   into an equivalent closure for defense in depth.
+  The same page CSP is applied in **development** too. Dev adds exactly two
+  allowances the Vite dev server cannot work without: `ws:` / `http://localhost:*`
+  in `connect-src` for HMR, and `'unsafe-inline'` in `script-src` for Vite's
+  injected bootstrap and React Fast Refresh preamble (without it the app cannot
+  mount, per `@vitejs/plugin-react can't detect preamble` in the log). Neither
+  allowance exists in a packaged build — the shipped policy still forbids inline
+  script, remote fonts, and any remote origin.
+- Worker source location: in development it is read from
+  `node_modules/vosk-browser/dist/ashirs-kaldi-worker.js`; in a packaged build
+  `node_modules` is not shipped, so `extraResources` copies the same file to
+  `resources/vosk/` and the main process reads it from `process.resourcesPath`.
+  If neither exists the failure is an explicit error, never a silent fallback.
+
 - Phrase matching (`src/renderer/src/lib/wake-phrases.ts`) is pure string math
   on partial transcripts; nothing is recorded or transmitted while waiting for
   the wake phrase. Only after the phrase fires does normal (user-initiated)
@@ -68,21 +86,44 @@ vosk-model:`. Embedded fonts load via `font-src 'self' data:`. The dynCall
 
 ## Data at rest
 
-| File                | Location                          | Protection                                                                                                                                                                                                                              |
-| ------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Conversation memory | `%APPDATA%/ashirs-ai/memory.json` | **DPAPI-encrypted envelope** (`version 3`, Windows CryptProtectData via Electron safeStorage). Plaintext never touches disk; if encryption is unavailable the session stays RAM-only. Old plaintext formats are auto-discarded on load. |
-| Settings            | `%APPDATA%` settings store        | DPAPI-encrypted via safeStorage                                                                                                                                                                                                         |
-| Routines            | `routines.json`                   | plaintext JSON (names/folder/time only — no message content)                                                                                                                                                                            |
-| Action log          | `logs/actions.log`                | plaintext, secret-pattern redaction enforced in logger                                                                                                                                                                                  |
-| API keys            | `.env` beside app                 | gitignored, read only by main process, never serialized over IPC, regex-redacted if they ever reach logs                                                                                                                                |
+| File                | Location                               | Protection                                                                                                                                                                                                                              |
+| ------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Conversation memory | `%APPDATA%/ashirs-ai/memory.json`      | **DPAPI-encrypted envelope** (`version 3`, Windows CryptProtectData via Electron safeStorage). Plaintext never touches disk; if encryption is unavailable the session stays RAM-only. Old plaintext formats are auto-discarded on load. |
+| Agent memories      | `%APPDATA%/ashirs-ai/agents/<id>.json` | same DPAPI envelope, one store per town agent (alice, bob, carol, dave)                                                                                                                                                                 |
+| Settings            | `%APPDATA%` settings store             | DPAPI-encrypted via safeStorage                                                                                                                                                                                                         |
+| Routines            | `routines.json`                        | plaintext JSON (name, approved absolute folder, time — no message content)                                                                                                                                                              |
+| Action log          | `logs/actions.log`                     | plaintext, secret-pattern redaction enforced in logger; tool arguments are logged through the same redacting summarizer the UI uses, so file content never reaches the log                                                              |
+| API keys            | `.env` beside app                      | gitignored, read only by main process, never serialized over IPC, regex-redacted if they ever reach logs                                                                                                                                |
+
+Uninstall keeps `%APPDATA%/ashirs-ai` (`deleteAppDataOnUninstall: false`). The
+in-app **Delete all my data** button is the deliberate erase path, and it clears
+the main transcript _and_ all four agent memories, reporting per-store failures
+instead of claiming a clean wipe.
 
 ## Mutation safety
 
-- Every destructive action (file moves/deletes, process kills, app launches,
-  volume/brightness changes) is proposed → shown in an amber Approve/Cancel
-  dialog → executed only on explicit approval → followed by a ground-truth
-  SYSTEM ACTION REPORT so the assistant cannot claim false success.
-- Read-only tools (web search, system stats) run without approval.
+- Every mutating action is proposed → shown in plain language → executed only on
+  explicit approval → followed by a ground-truth SYSTEM ACTION REPORT so the
+  assistant cannot claim false success.
+- Proposals expire after **5 minutes**. The renderer shows a live countdown and
+  drops the card; the main process refuses the decision even if a stale card
+  were still around.
+- Non-destructive proposals (organize, schedule, volume, brightness, launch)
+  appear inline in the chat with a count, the first 10 detail lines and a queue
+  indicator. Irreversible ones (write, delete, delete routine) use a blocking
+  modal instead.
+- The originating agent is bound to the proposal. On approval the main process
+  re-checks that the action's tool is still inside that agent's toolkit, so a
+  tampered or replayed decision cannot exceed the agent's scope.
+- Execution re-validates at the last moment: protected paths (Discord, WhatsApp,
+  VS Code, system folders) are refused again inside the executor, and a delete
+  is refused if the target is no longer the same kind of thing (file vs folder)
+  that the user actually approved.
+- Routines store the exact absolute folder that was approved, and the scheduler
+  re-resolves it and re-checks it at fire time.
+- Tool cards and logs never echo file content: `summarizeArgs` replaces the
+  `content` argument with a character count.
+- Read-only tools (folder search, summaries, system stats) run without approval.
 
 ## Screen Awareness contract (Phase B — to be implemented)
 

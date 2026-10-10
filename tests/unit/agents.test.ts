@@ -40,9 +40,10 @@ describe('TOWN_AGENTS config (spec 5.2)', () => {
     ])
   })
 
-  it('every town agent is connected', () => {
+  it('only Dave is unconnected, because his provider path is not wired yet (spec 4.4)', () => {
     for (const agent of TOWN_AGENTS) {
-      expect(agent.connected, `${agent.id} should be connected`).toBe(true)
+      const expected = agent.id !== 'dave'
+      expect(agent.connected, `${agent.id} connected state`).toBe(expected)
     }
   })
 

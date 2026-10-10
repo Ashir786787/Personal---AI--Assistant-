@@ -134,7 +134,7 @@ export function SystemView(): JSX.Element {
             Read-only vitals — this view can never change anything
           </p>
         </div>
-        <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
+        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.2em] text-ink-muted">
           Last {SPARK_MAX_SAMPLES} readings · 2s · while visible
         </span>
       </div>

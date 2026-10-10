@@ -2,7 +2,7 @@ import { resolveWritablePath } from '../fs/scope'
 import { listDirectory } from '../fs/listing'
 import { planOrganization } from '../tools/organizer'
 import { executeOrganizationPlan } from '../fs/executor'
-import { listRoutines, markRoutineRun } from './store'
+import { listRoutines, markRoutineRun, type Routine } from './store'
 import { log } from '../lib/logger'
 
 const TICK_MS = 30_000
@@ -28,14 +28,14 @@ export function isRoutineDue(
   return nowHHMM >= targetHHMM
 }
 
-export async function runOrganizeRoutine(folderName: string): Promise<string> {
-  const absolutePath = resolveWritablePath(folderName)
+/**
+ * Runs at fire time, so the approved path is re-validated before anything moves:
+ * a routine must not tidy a folder the user has since protected.
+ */
+export async function runOrganizeRoutine(routine: Routine): Promise<string> {
+  const absolutePath = resolveWritablePath(routine.folderPath ?? routine.folderName)
+  const sourceName = routine.folderName
   const entries = await listDirectory(absolutePath)
-  const sourceName =
-    folderName
-      .split(/[\\/]+/)
-      .filter(Boolean)
-      .pop() ?? folderName
   const plan = planOrganization(sourceName, entries)
 
   if (plan.moves.length === 0) {
@@ -55,7 +55,7 @@ export async function tickRoutines(now = new Date()): Promise<string[]> {
   for (const routine of listRoutines()) {
     if (!isRoutineDue(nowHHMM, routine.timeHHMM, routine.lastRunDayKey, todayKey)) continue
     try {
-      const result = await runOrganizeRoutine(routine.folderName)
+      const result = await runOrganizeRoutine(routine)
       markRoutineRun(routine.id, todayKey, result)
       summaries.push(`🧹 ${routine.name}: ${result}`)
       log('info', 'routine', `${routine.name} → ${result}`)

@@ -4,13 +4,16 @@ import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createDeleteFileTool, createWriteFileTool } from '../../src/main/tools/file-tools'
 import { PathScopeError, setAllowedRootsOverride } from '../../src/main/fs/scope'
-import type { ActionProposal } from '@shared/ipc'
+import type { ProposalCardDraft } from '@shared/ipc'
 
 let sandbox = ''
 let fakeRoot = ''
 
-function captureProposals(): { proposals: ActionProposal[]; emit: (p: ActionProposal) => void } {
-  const proposals: ActionProposal[] = []
+function captureProposals(): {
+  proposals: ProposalCardDraft[]
+  emit: (draft: ProposalCardDraft) => void
+} {
+  const proposals: ProposalCardDraft[] = []
   return { proposals, emit: (p) => proposals.push(p) }
 }
 

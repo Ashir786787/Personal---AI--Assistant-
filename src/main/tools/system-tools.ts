@@ -1,5 +1,5 @@
 import type { ToolDefinition } from '@shared/tools'
-import type { ActionProposal } from '@shared/ipc'
+import type { ProposalCardDraft } from '@shared/ipc'
 import { createProposal } from './proposals'
 import { listSupportedApps, resolveApp, sanitizeUrl } from '../system/apps'
 
@@ -11,7 +11,7 @@ function clampLevel(args: Record<string, unknown>): number | null {
 }
 
 export function createSystemTools(
-  emitProposal: (proposal: ActionProposal) => void
+  emitProposal: (draft: ProposalCardDraft) => void
 ): ToolDefinition[] {
   const setVolumeTool: ToolDefinition = {
     name: 'set_volume',
@@ -44,7 +44,7 @@ export function createSystemTools(
       emitProposal({
         id: proposal.id,
         title: 'Toggle system mute',
-        detailLines: ['Presses the Windows mute key — flips sound off if on, on if off.'],
+        detailLines: ['Presses the Windows mute key â€” flips sound off if on, on if off.'],
         totalMoves: 1
       })
       return 'A confirmation dialog to toggle mute was shown. Wait for the user decision'

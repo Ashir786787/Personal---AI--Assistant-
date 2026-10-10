@@ -50,7 +50,7 @@ export function TasksPanel({ agents, tasks, queueCount, onCancel }: TasksPanelPr
     <aside className="flex h-full w-[320px] shrink-0 flex-col border-l border-edge bg-base/40">
       <div className="flex items-center justify-between border-b border-edge px-4 py-3">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.3em] text-ink-muted">Tasks</h2>
-        <span className="rounded-full border border-edge px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+        <span className="rounded-full border border-edge px-2 py-0.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
           {queueCount} / 5
         </span>
       </div>
@@ -69,7 +69,7 @@ export function TasksPanel({ agents, tasks, queueCount, onCancel }: TasksPanelPr
                   <span className="text-sm font-semibold text-ink">{meta.name}</span>
                 </div>
                 <span
-                  className={`rounded-full border border-edge px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest ${
+                  className={`rounded-full border border-edge px-2 py-0.5 font-mono text-[11px] uppercase tracking-widest ${
                     connected ? 'text-ink-muted' : 'text-ink-muted/60'
                   }`}
                 >
@@ -80,7 +80,7 @@ export function TasksPanel({ agents, tasks, queueCount, onCancel }: TasksPanelPr
               <div className="mt-1 flex items-center justify-between">
                 <span className="text-xs text-ink-muted">{meta.title}</span>
                 {!connected ? (
-                  <span className="rounded-full border border-ink-muted/40 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted/60">
+                  <span className="rounded-full border border-ink-muted/40 px-2 py-0.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted/60">
                     Not connected
                   </span>
                 ) : (
@@ -110,7 +110,7 @@ export function TasksPanel({ agents, tasks, queueCount, onCancel }: TasksPanelPr
                     >
                       <div className="min-w-0 text-left">
                         <p className="truncate text-xs text-ink">{task.text}</p>
-                        <p className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                        <p className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">
                           {task.status}
                         </p>
                       </div>
@@ -118,7 +118,7 @@ export function TasksPanel({ agents, tasks, queueCount, onCancel }: TasksPanelPr
                         <button
                           type="button"
                           onClick={() => onCancel(task.id)}
-                          className="shrink-0 rounded-full border border-edge px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:border-danger hover:text-danger"
+                          className="shrink-0 rounded-full border border-edge px-2 py-0.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:border-danger hover:text-danger"
                         >
                           {cancelLabel(task.status)}
                         </button>
@@ -133,7 +133,7 @@ export function TasksPanel({ agents, tasks, queueCount, onCancel }: TasksPanelPr
       </ul>
 
       <div className="border-t border-edge px-4 py-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-muted/70">
+        <p className="font-mono text-[11px] uppercase tracking-[0.25em] text-ink-muted/70">
           WASD move · E talk · ENTER submit · ESC cancel
         </p>
       </div>

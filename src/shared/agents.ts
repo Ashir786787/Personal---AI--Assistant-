@@ -78,7 +78,9 @@ export const TOWN_AGENTS: readonly TownAgentConfig[] = [
     title: 'Dave Research',
     domain: 'RESEARCH',
     tools: ['list_folder', 'folder_summary', 'sandbox_overview', 'search_files'],
-    connected: true,
+    // Search and summary tools exist but no research provider path is wired yet, so the
+    // town shows him as not connected instead of pretending he can answer.
+    connected: false,
     motto: 'digging through your files for answers',
     systemPrompt: [
       "You are DAVE, ASHIR's research agent living in his Agent Town.",

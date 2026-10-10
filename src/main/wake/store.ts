@@ -86,15 +86,26 @@ export function getWakeState(): WakeModelInternalState {
 let cachedWorkerScript: string | null = null
 
 /**
- * Loads the extracted vosk Web Worker source emitted by scripts/patch-vosk.cjs
- * at install time (node_modules/vosk-browser/dist/ashirs-kaldi-worker.js).
- * Served over vosk-worker:// so it can carry its own worker-scoped CSP
- * (Emscripten's embind layer needs dynamic code compilation inside this
- * isolated worker; the renderer page stays strict). Reads are asar-transparent.
+ * Where the extracted worker lives. In development it sits in node_modules; in a
+ * packaged build node_modules is not shipped, so electron-builder copies the same
+ * file to resources/vosk/ and it is read from there.
  */
+function voskWorkerCandidates(): string[] {
+  const fileName = 'ashirs-kaldi-worker.js'
+  const packaged = join(process.resourcesPath, 'vosk', fileName)
+  const development = join(__dirname, '../../node_modules/vosk-browser/dist', fileName)
+  return app.isPackaged ? [packaged, development] : [development, packaged]
+}
+
 export function loadVoskWorkerSource(): string {
   if (cachedWorkerScript) return cachedWorkerScript
-  const workerPath = join(__dirname, '../../node_modules/vosk-browser/dist/ashirs-kaldi-worker.js')
+  const tried = voskWorkerCandidates()
+  const workerPath = tried.find((candidate) => existsSync(candidate))
+  if (!workerPath) {
+    throw new Error(
+      `vosk worker not found. Looked in: ${tried.join(', ')}. Run "npm install" so scripts/patch-vosk.cjs can extract it.`
+    )
+  }
   const source = readFileSync(workerPath, 'utf8')
   log('info', 'wake', `vosk worker source loaded (${Math.round(source.length / 1_000_000)} MB)`)
   cachedWorkerScript = source

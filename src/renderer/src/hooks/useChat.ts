@@ -1,175 +1,161 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ChatRole } from '@shared/chat'
-import type { ProviderId } from '@shared/providers'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { StreamEvent } from '@shared/chat'
+import {
+  canRegenerate as canRegenerateState,
+  chatReducer,
+  initialChatState,
+  type ChatAction,
+  type ChatState,
+  type UiMessage
+} from '../lib/chat-reducer'
 
-export interface UiMessage {
-  id: string
-  role: ChatRole | 'error'
-  content: string
-  provider?: ProviderId
-  streaming?: boolean
+export type { UiMessage } from '../lib/chat-reducer'
+
+const BRIDGE_MISSING =
+  "The secure bridge to the assistant core is not available. If you are viewing this in a regular browser tab, close it and use the ASHIR's AI desktop window instead."
+const SEND_FAILED = 'The message never reached the assistant. Try sending it again.'
+
+let idCounter = 0
+function nextId(prefix: string): string {
+  idCounter += 1
+  return `${prefix}-${Date.now().toString(36)}-${idCounter}`
 }
 
-interface StreamState {
-  messageId: string | null
-  provider: ProviderId | null
+function reduceStreamEvent(state: ChatState, event: StreamEvent, now: number): ChatState {
+  switch (event.type) {
+    case 'turnStart':
+      return chatReducer(state, { type: 'turn-start', turnId: event.turnId, now: event.startedAt })
+    case 'start':
+      return chatReducer(state, {
+        type: 'provider-start',
+        id: nextId('assistant'),
+        provider: event.provider,
+        now
+      })
+    case 'delta':
+      return chatReducer(state, { type: 'delta', text: event.text })
+    case 'tool':
+      return chatReducer(state, {
+        type: 'tool-start',
+        id: nextId('tool'),
+        toolId: event.toolId,
+        name: event.name,
+        detail: event.argsSummary
+      })
+    case 'toolStatus':
+      return chatReducer(state, {
+        type: 'tool-status',
+        toolId: event.toolId,
+        status: event.status,
+        ...(event.detail !== undefined ? { detail: event.detail } : {})
+      })
+    case 'toolDone':
+      return chatReducer(state, { type: 'tool-status', toolId: event.toolId, status: 'done' })
+    case 'toolFailed':
+      return chatReducer(state, {
+        type: 'tool-status',
+        toolId: event.toolId,
+        status: 'failed',
+        detail: event.message
+      })
+    case 'agent':
+      return event.state === 'start'
+        ? chatReducer(state, {
+            type: 'agent-start',
+            id: nextId('agent'),
+            agentId: event.agentId,
+            name: event.name
+          })
+        : chatReducer(state, {
+            type: 'agent-end',
+            agentId: event.agentId,
+            status: event.state === 'failed' ? 'failed' : 'done'
+          })
+    case 'done':
+    case 'cancelled':
+      return chatReducer(state, { type: 'settle', now })
+    case 'error':
+      return chatReducer(state, { type: 'error', id: nextId('error'), message: event.message, now })
+    case 'reset':
+      return chatReducer(state, { type: 'reset' })
+  }
 }
 
-function argsSummaryLabel(name: string, summary: string): string {
-  return summary.length > 0 ? `${name} · ${summary}` : name
+export interface UseChat {
+  messages: UiMessage[]
+  busy: boolean
+  canRegenerate: boolean
+  send: (text: string) => void
+  stop: () => void
+  regenerate: () => void
 }
 
-export function useChat() {
-  const [messages, setMessages] = useState<UiMessage[]>([])
-  const [busy, setBusy] = useState(false)
-  const stream = useRef<StreamState>({ messageId: null, provider: null })
+export function useChat(): UseChat {
+  const [state, setState] = useState<ChatState>(initialChatState)
+  const stateRef = useRef<ChatState>(initialChatState)
+
+  // Stream events arrive faster than React renders, so the latest state is tracked
+  // in a ref and every event is reduced synchronously.
+  const dispatch = useCallback((action: ChatAction): void => {
+    const next = chatReducer(stateRef.current, action)
+    stateRef.current = next
+    setState(next)
+  }, [])
 
   useEffect(() => {
     if (typeof window.ashirs === 'undefined') {
-      setMessages([
-        {
-          id: 'error-bridge',
-          role: 'error',
-          content:
-            "The secure bridge to the assistant core is not available. If you are viewing this in a regular browser tab, close it and use the ASHIR's AI desktop window instead."
-        }
-      ])
+      dispatch({ type: 'notice', id: 'error-bridge', message: BRIDGE_MISSING })
       return
     }
 
     const unsubscribe = window.ashirs.onStreamEvent((event) => {
-      switch (event.type) {
-        case 'start': {
-          const id = `assistant-${Date.now()}`
-          stream.current = { messageId: id, provider: event.provider }
-          setMessages((prev) => [
-            ...prev,
-            { id, role: 'assistant', content: '', provider: event.provider, streaming: true }
-          ])
-          break
-        }
-        case 'delta': {
-          const { messageId } = stream.current
-          if (!messageId) break
-          setMessages((prev) =>
-            prev.map((m) => (m.id === messageId ? { ...m, content: m.content + event.text } : m))
-          )
-          break
-        }
-        case 'tool': {
-          const failedId = stream.current.messageId
-          setMessages((prev) => {
-            const withoutRawJson = failedId !== null ? prev.filter((m) => m.id !== failedId) : prev
-            return [
-              ...withoutRawJson,
-              {
-                id: `tool-${Date.now()}`,
-                role: 'tool',
-                content: argsSummaryLabel(event.name, event.argsSummary)
-              }
-            ]
-          })
-          stream.current = { messageId: null, provider: null }
-          break
-        }
-        case 'agent': {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `agent-${event.name}-${event.state}-${Date.now()}`,
-              role: 'tool',
-              content: event.state === 'start' ? `${event.name} is on it` : `${event.name} finished`
-            }
-          ])
-          break
-        }
-        case 'done': {
-          const { messageId } = stream.current
-          if (messageId) {
-            setMessages((prev) =>
-              prev.map((m) => (m.id === messageId ? { ...m, streaming: false } : m))
-            )
-          }
-          stream.current = { messageId: null, provider: null }
-          setBusy(false)
-          break
-        }
-        case 'cancelled': {
-          const { messageId } = stream.current
-          if (messageId) {
-            setMessages((prev) =>
-              prev.map((m) => (m.id === messageId ? { ...m, streaming: false } : m))
-            )
-          }
-          stream.current = { messageId: null, provider: null }
-          setBusy(false)
-          break
-        }
-        case 'reset': {
-          stream.current = { messageId: null, provider: null }
-          setMessages([])
-          setBusy(false)
-          break
-        }
-        case 'error': {
-          if (stream.current.messageId) {
-            const failedId = stream.current.messageId
-            setMessages((prev) =>
-              prev
-                .filter((m) => m.id !== failedId)
-                .concat({ id: `error-${Date.now()}`, role: 'error', content: event.message })
-            )
-          } else {
-            setMessages((prev) => [
-              ...prev,
-              { id: `error-${Date.now()}`, role: 'error', content: event.message }
-            ])
-          }
-          stream.current = { messageId: null, provider: null }
-          setBusy(false)
-          break
-        }
-      }
+      stateRef.current = reduceStreamEvent(stateRef.current, event, Date.now())
+      setState(stateRef.current)
     })
     return unsubscribe
-  }, [])
+  }, [dispatch])
 
   const send = useCallback(
     (text: string): void => {
       const trimmed = text.trim()
-      if (trimmed.length === 0 || busy) return
+      if (trimmed.length === 0 || stateRef.current.busy) return
 
       if (typeof window.ashirs === 'undefined') {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `error-${Date.now()}`,
-            role: 'error',
-            content:
-              "The secure bridge is not available here. Close this browser tab and use the ASHIR's AI desktop window."
-          }
-        ])
+        dispatch({ type: 'notice', id: nextId('error'), message: BRIDGE_MISSING })
         return
       }
 
-      const localId = `user-${Date.now()}`
-      setMessages((prev) => [...prev, { id: localId, role: 'user', content: trimmed }])
-      setBusy(true)
+      const localId = nextId('user')
+      const turnId = nextId('turn')
+      dispatch({ type: 'user-sent', id: localId, text: trimmed, turnId, now: Date.now() })
 
       window.ashirs.sendChat({ text: trimmed }).catch(() => {
-        setMessages((prev) => [
-          ...prev.filter((m) => m.id !== localId),
-          {
-            id: `error-${Date.now()}`,
-            role: 'error',
-            content: 'The message never reached the assistant. Try sending it again.'
-          }
-        ])
-        setBusy(false)
+        dispatch({
+          type: 'send-failed',
+          userId: localId,
+          id: nextId('error'),
+          message: SEND_FAILED,
+          now: Date.now()
+        })
       })
     },
-    [busy]
+    [dispatch]
   )
 
-  return { messages, busy, send }
+  const stop = useCallback((): void => {
+    if (typeof window.ashirs === 'undefined') return
+    window.ashirs.cancelChat()
+  }, [])
+
+  const regenerate = useCallback((): void => {
+    if (stateRef.current.busy || typeof window.ashirs === 'undefined') return
+    void window.ashirs.regenerateChat().then((result) => {
+      if (!result) return
+      dispatch({ type: 'regenerate', turnId: nextId('turn'), now: Date.now() })
+    })
+  }, [dispatch])
+
+  const canRegenerate = useMemo(() => canRegenerateState(state), [state])
+
+  return { messages: state.messages, busy: state.busy, canRegenerate, send, stop, regenerate }
 }

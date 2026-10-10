@@ -137,7 +137,7 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
     const watchdog = window.setTimeout(() => {
       if (generation !== generationRef.current) return
       if (engineRef.current) return
-      setError('The voice engine took too long to start — toggle off and on to retry')
+      setError('The voice engine took too long to start Ã¢â‚¬â€ toggle off and on to retry')
       setStatus('error')
     }, 180_000)
 
@@ -219,6 +219,7 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
         }
         if (suspendedRef.current) return
         if (!engineRef.current) {
+          // eslint-disable-next-line no-console -- renderer has no logger; this is a diagnostic
           console.warn('[wake] health check: engine gone, restarting')
           if (healthRef.current) {
             clearInterval(healthRef.current)
@@ -232,6 +233,7 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
           eng.ctx.state === 'closed' ||
           eng.stream.getTracks().every((t) => t.readyState === 'ended')
         ) {
+          // eslint-disable-next-line no-console -- renderer has no logger; this is a diagnostic
           console.warn('[wake] health check: audio dead, restarting engine')
           if (healthRef.current) {
             clearInterval(healthRef.current)
@@ -240,6 +242,7 @@ export function useWakeWord({ enabled, onWake }: WakeOptions): WakeApi {
           teardown()
           void startEngine()
         } else if (eng.ctx.state === 'suspended') {
+          // eslint-disable-next-line no-console -- renderer has no logger; this is a diagnostic
           console.info('[wake] health check: AudioContext suspended, resuming')
           void eng.ctx.resume()
         }

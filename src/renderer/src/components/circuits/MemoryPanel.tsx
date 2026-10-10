@@ -7,8 +7,8 @@ interface Props {
 
 const SLOTS = [
   { title: 'Your name', value: 'Ashir', note: 'from our first hello' },
-  { title: 'Preferences', value: 'Learning…', note: 'I pick these up as we talk' },
-  { title: 'Projects', value: 'ASHIR’s AI', note: 'the assistant we are building together' }
+  { title: 'Preferences', value: 'Not learned yet', note: 'I keep the whole transcript instead' },
+  { title: 'Projects', value: "ASHIR's AI", note: 'the assistant we are building together' }
 ]
 
 export function MemoryPanel({ onClose }: Props): JSX.Element {
@@ -18,25 +18,31 @@ export function MemoryPanel({ onClose }: Props): JSX.Element {
     void window.ashirs.memorySummary().then(setSummary)
   }, [])
 
+  const total = summary === null ? 0 : summary.messageCount + summary.agentMessageCount
+
   return (
     <div className="space-y-3">
       <p className="text-sm leading-relaxed text-ink-muted">
-        Everything here lives on this machine only. Deeper memory — facts, habits, routines — comes
-        online in the next phase.
+        The transcripts live on this machine only, and the chat you see is sent to the AI provider
+        you chose. Deeper memory — facts, habits, routines — comes online in the next phase.
       </p>
 
       <div className="memory-stat-row">
         <div>
-          <strong>{summary ? summary.messageCount : '—'}</strong>
+          <strong>{summary ? total : '—'}</strong>
           <span>messages remembered</span>
         </div>
         <div>
-          <strong>
-            {summary?.oldestAt ? new Date(summary.oldestAt).toLocaleDateString() : '—'}
-          </strong>
-          <span>first contact</span>
+          <strong>{summary ? summary.storeCount : '—'}</strong>
+          <span>encrypted stores</span>
         </div>
       </div>
+
+      {summary !== null && summary.agentMessageCount > 0 && (
+        <p className="font-mono text-[11px] text-ink-muted">
+          {summary.messageCount} in chat · {summary.agentMessageCount} in the town agents
+        </p>
+      )}
 
       {SLOTS.map((slot) => (
         <div key={slot.title} className="memory-card">

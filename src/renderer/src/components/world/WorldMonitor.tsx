@@ -41,14 +41,14 @@ export function WorldMonitor() {
         </div>
         <div className="text-right">
           <div className="font-mono text-[22px] leading-none text-ink">{utcClock()}</div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-muted">UTC</div>
+          <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-ink-muted">UTC</div>
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1 gap-4">
         <aside className="w-[150px] shrink-0 overflow-y-auto">
           <div className="mb-2 flex items-center justify-between px-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-muted">
+            <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-ink-muted">
               World clocks
             </span>
           </div>
@@ -58,7 +58,7 @@ export function WorldMonitor() {
         <main className="flex min-h-0 flex-1 flex-col gap-2">
           <div className="flex items-center justify-between">
             <Tabs tabs={TABS} active={tab} onChange={setTab} ariaLabel="World projection" />
-            <span className="font-mono text-[9px] uppercase tracking-widest text-ink/30">
+            <span className="font-mono text-[11px] uppercase tracking-widest text-ink/30">
               {LAND_SOURCE}
             </span>
           </div>
@@ -68,10 +68,10 @@ export function WorldMonitor() {
             ) : (
               <MapCanvas hotspots={feed.hotspots} />
             )}
-            <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-base/70 px-2.5 py-1 font-mono text-[10px] tracking-wider text-ink/45">
+            <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-base/70 px-2.5 py-1 font-mono text-[11px] tracking-wider text-ink/45">
               {tab === 'globe' ? 'drag to rotate · scroll to zoom' : 'drag to pan · scroll to zoom'}
             </div>
-            <div className="pointer-events-none absolute bottom-3 right-3 rounded-lg bg-base/70 px-2.5 py-1 font-mono text-[10px] tracking-wider text-ink/55">
+            <div className="pointer-events-none absolute bottom-3 right-3 rounded-lg bg-base/70 px-2.5 py-1 font-mono text-[11px] tracking-wider text-ink/55">
               {feed.hotspots.length === 0
                 ? 'no hotspots — headlines with country names appear here'
                 : `${feed.hotspots.length} hotspot${feed.hotspots.length === 1 ? '' : 's'}`}

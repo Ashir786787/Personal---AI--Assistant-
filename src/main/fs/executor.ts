@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, renameSync } from 'node:fs'
 import { join } from 'path'
 import type { PlannedMove } from '../tools/organizer'
+import { isExcludedAppPath, isProtectedWritePath } from './scope'
 
 export interface ExecutionResult {
   moved: number
@@ -24,15 +25,31 @@ function uniqueDestination(folder: string, fileName: string): string {
 export function executeOrganizationPlan(sourceDir: string, moves: PlannedMove[]): ExecutionResult {
   const result: ExecutionResult = { moved: 0, failed: [] }
 
+  // Re-checked per move, because this also runs on a timer without a fresh dialog.
+  if (isExcludedAppPath(sourceDir) || isProtectedWritePath(sourceDir)) {
+    return {
+      moved: 0,
+      failed: moves.map((move) => ({ fileName: move.fileName, reason: 'protected location' }))
+    }
+  }
+
   for (const move of moves) {
     try {
       const from = join(sourceDir, move.fileName)
+      const targetFolder = join(sourceDir, move.toSubfolder)
+      if (isExcludedAppPath(from) || isProtectedWritePath(from)) {
+        result.failed.push({ fileName: move.fileName, reason: 'protected location' })
+        continue
+      }
+      if (isExcludedAppPath(targetFolder) || isProtectedWritePath(targetFolder)) {
+        result.failed.push({ fileName: move.fileName, reason: 'protected destination' })
+        continue
+      }
       if (!existsSync(from)) {
         result.failed.push({ fileName: move.fileName, reason: 'already gone' })
         continue
       }
 
-      const targetFolder = join(sourceDir, move.toSubfolder)
       if (!existsSync(targetFolder)) mkdirSync(targetFolder, { recursive: true })
 
       const to = uniqueDestination(targetFolder, move.fileName)

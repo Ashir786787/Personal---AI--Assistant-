@@ -4,14 +4,19 @@ A secure, local-first personal desktop assistant for Windows. Talk to it by voic
 
 Built by M. Ashir Mushtaq.
 
-## Current status: v1.0 — daily-driver ready
+## Current status: v1.5.14 — daily-driver ready
 
-- Real-time chat with streaming responses
+- Real-time chat with streaming responses, a Stop button mid-answer, and Regenerate on the last turn
+- Markdown answers (lists, code fences with Copy, links) rendered as React elements — no `dangerouslySetInnerHTML`
 - Dual-provider balancing across **Google Gemini** and **Groq** — automatic failover when one provider hits its free limit or has a bad day
 - Voice input via Groq Whisper (`whisper-large-v3-turbo`) — transcripts land in the input box for review before sending
 - Voice output through Windows speech synthesis
-- Hardened Electron shell: sandboxed renderer, strict CSP in packaged builds, navigation lock, single-instance enforcement
+- An Agent Town of four specialists (Alice files, Bob system, Carol routines, Dave research) that run real tools inside their own scope; Dave shows **Not connected** because his path is not wired yet
+- Daily tidy routines that resolve and re-validate the exact approved folder at fire time
+- Hardened Electron shell: sandboxed renderer, strict CSP in packaged _and_ development builds, navigation lock, single-instance enforcement
 - Secrets stay in the main process; API keys are encrypted at rest with Windows DPAPI once stored through the app
+- **Delete all my data** in Settings erases the chat and all four agent memories, and reports exactly what it wiped
+- Reduce-motion switch that honors the Windows setting by default
 - Append-only action log with automatic secret redaction
 
 ## Requirements
@@ -101,12 +106,15 @@ Key decisions:
 | 4     | Scheduled routines                               | Done   |
 | 5     | Release automation, signing hooks                | Done   |
 | 6     | Conversation persistence — **v1.0**              | Done   |
+| 7     | Agent Town, wake word, world monitor, **v1.5**   | Done   |
 
-v1.0 highlights: streaming chat with automatic provider failover, live voice
-typing, spoken replies, sandboxed file search and organization behind an
-approval gate, whitelisted app launching, volume/brightness controls, daily
-tidy routines, in-app encrypted API key settings, a custom installer with
-auto-updates, and conversations that survive restarts.
+v1.5 highlights: the Agent Town, an on-device wake word, the world monitor, Stop
+and Regenerate in the chat, Markdown answers, a proposal queue with a five-minute
+approval window, honest memory counts, and a real "Delete all my data" wipe.
+
+Not yet built: Dave's research path (shown as Not connected rather than faked),
+deeper long-term memory beyond transcripts, screen awareness, and code signing on
+the installer.
 
 ## Releases and auto-updates
 
@@ -129,7 +137,11 @@ release build. Without them the installer stays unsigned (SmartScreen warning
 appears once per new version).
 
 Note: the update feed requires the GitHub repository to be public (or a token
-on the client). Decide before v1.0 whether this repo goes public.
+on the client). Decide before publishing whether this repo goes public.
+
+Uninstalling leaves `%APPDATA%/ashirs-ai` in place (`deleteAppDataOnUninstall`
+is deliberately `false`), so transcripts and keys are not destroyed by accident.
+Use **Settings → Delete all my data** to erase them on purpose.
 
 ## Safety rules this project follows
 

@@ -1,4 +1,9 @@
 import { useEffect, useRef } from 'react'
+import {
+  readMotionSetting,
+  resolveReducedMotion,
+  systemPrefersReducedMotion
+} from '../../hooks/useReducedMotion'
 
 export type OrbState = 'off' | 'idle' | 'listening' | 'thinking'
 
@@ -68,10 +73,8 @@ export function VoiceOrb({
     canvas.height = cssSize * dpr
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    const reducedMotion =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const calm = reducedMotion ? 0.3 : 1
+    // Honors both the OS preference and the in-app Reduce motion setting.
+    const calm = resolveReducedMotion(readMotionSetting(), systemPrefersReducedMotion()) ? 0.3 : 1
 
     const particles = buildSphere(PARTICLE_COUNT)
     const center = cssSize / 2

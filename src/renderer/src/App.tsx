@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { MotionConfig } from 'framer-motion'
 import { StatusBar } from './components/status/StatusBar'
 import { ChatPanel } from './components/chat/ChatPanel'
 import { ConfirmationModal } from './components/confirm/ConfirmationModal'
@@ -19,6 +20,8 @@ import { useUpdater, updateLabel } from './hooks/useUpdater'
 import { usePowerState } from './hooks/usePowerState'
 import { isPowered } from './state/powerState'
 import { useWakeWord, isWakeEnabledStored, setWakeEnabledStored } from './hooks/useWakeWord'
+import { useReducedMotion } from './hooks/useReducedMotion'
+import { useWindowHidden } from './hooks/useWindowHidden'
 import { isSignificantTranscript } from './lib/transcriptFilter'
 import { stripWakePrefix } from './lib/wake-phrases'
 
@@ -31,17 +34,25 @@ const FOLLOW_LISTEN_MS = 7000
 type LoopPhase = 'off' | 'awaiting' | 'working' | 'following'
 
 export function App() {
-  const { messages, busy, send } = useChat()
+  const { messages, busy, canRegenerate, send, stop: stopChat, regenerate } = useChat()
   const busyRef = useRef(busy)
   busyRef.current = busy
   const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem(TTS_STORAGE_KEY) === '1')
   const [draft, setDraft] = useState('')
   const { speak, stop, speaking } = useSpeech(ttsEnabled)
-  const { proposal, busy: deciding, outcome, decide, dismissOutcome } = useProposals()
+  const { proposal, queued, busy: deciding, outcome, decide, dismissOutcome } = useProposals()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [view, setView] = useState<ViewId>('core')
+  // Destructive actions keep the blocking modal; the rest sit inline in the always-visible
+  // chat panel, so an approval is never hidden behind another view.
+  const blockingProposal = proposal !== null && proposal.destructive ? proposal : null
+  const inlineApproval =
+    proposal !== null && !proposal.destructive ? { proposal, queued, busy: deciding } : null
   const [updateOpen, setUpdateOpen] = useState(false)
   const { theme, setTheme, cycleTheme } = useTheme()
+  const motion = useReducedMotion()
+  const reducedMotion = motion.reduced
+  const windowHidden = useWindowHidden()
   const { status: updateStatus, check, install } = useUpdater()
   const updateBadge = updateLabel(updateStatus)
   const { state: power, dispatch: powerEvent } = usePowerState()
@@ -259,10 +270,11 @@ export function App() {
   const handleClearChat = useCallback(async (): Promise<void> => {
     await window.ashirs.clearChat()
     setDraft('')
+    stopChat()
     stop()
     loopPhaseRef.current = 'off'
     setLoopPhase('off')
-  }, [stop])
+  }, [stop, stopChat])
 
   const toggleTts = (): void => {
     setTtsEnabled((prev) => {
@@ -289,109 +301,126 @@ export function App() {
   const lastProvider = [...messages].reverse().find((m) => m.role === 'assistant')?.provider ?? null
 
   return (
-    <div className="relative h-full overflow-hidden bg-base">
-      <Starfield />
-      <div className="relative z-10 flex h-full flex-col">
-        <StatusBar
-          micState={micState}
-          power={power.status}
-          lastProvider={lastProvider}
-          busy={busy}
-          theme={theme}
-          updateLabel={updateBadge}
-          wakeStatus={wakeEnabled ? wake.status : null}
-          onCycleTheme={cycleTheme}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onUpdateOpen={openUpdateCenter}
-          onPowerToggle={togglePower}
-        />
-        <div className="flex min-h-0 flex-1">
-          <RailNav view={view} onChange={setView} />
-
-          <main className="min-h-0 flex-1">
-            {view === 'core' && (
-              <CoreView
-                power={power}
-                wakeOn={wakeEnabled && powered}
-                level={voice.level}
-                onStart={() => powerEvent({ type: 'START' })}
-                onStop={togglePower}
-                onToggleMic={voice.toggle}
-                onOpenSettings={() => setSettingsOpen(true)}
-              />
-            )}
-
-            {view === 'agents' && (
-              <AgentTown
-                theme={theme}
-                focused={view === 'agents'}
-                approvalOpen={proposal !== null}
-              />
-            )}
-
-            {view === 'world' && (
-              <div className="h-full">
-                <WorldMonitor />
-              </div>
-            )}
-
-            {view === 'system' && (
-              <div className="h-full">
-                <SystemView />
-              </div>
-            )}
-          </main>
-
-          <ChatPanel
-            messages={messages}
+    <MotionConfig reducedMotion={reducedMotion ? 'always' : 'never'}>
+      <div
+        className="relative h-full overflow-hidden bg-base"
+        data-reduced-motion={reducedMotion ? 'true' : 'false'}
+        data-window-hidden={windowHidden ? 'true' : 'false'}
+      >
+        <Starfield />
+        <div className="relative z-10 flex h-full flex-col">
+          <StatusBar
+            micState={micState}
+            power={power.status}
+            lastProvider={lastProvider}
             busy={busy}
-            powered={powered}
-            value={draft}
-            onValueChange={setDraft}
-            ttsEnabled={ttsEnabled}
-            micListening={voice.recording}
-            micLevel={voice.level}
-            voiceNotice={voice.error}
-            onSend={sendAndAsk}
-            onToggleMic={voice.toggle}
-            onToggleTts={toggleTts}
-            onClear={handleClearChat}
+            theme={theme}
+            updateLabel={updateBadge}
+            wakeStatus={wakeEnabled ? wake.status : null}
+            onCycleTheme={cycleTheme}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onUpdateOpen={openUpdateCenter}
+            onPowerToggle={togglePower}
           />
-        </div>
-      </div>
+          <div className="flex min-h-0 flex-1">
+            <RailNav view={view} onChange={setView} />
 
-      {outcome && (
-        <div
-          className={`action-toast ${outcome.approved ? 'toast-ok' : 'toast-cancel'}`}
-          onClick={dismissOutcome}
-        >
-          {outcome.message}
+            <main className="min-h-0 flex-1">
+              {view === 'core' && (
+                <CoreView
+                  power={power}
+                  wakeOn={wakeEnabled && powered}
+                  level={voice.level}
+                  onStart={() => powerEvent({ type: 'START' })}
+                  onStop={togglePower}
+                  onToggleMic={voice.toggle}
+                  onOpenSettings={() => setSettingsOpen(true)}
+                />
+              )}
+
+              {view === 'agents' && (
+                <AgentTown
+                  theme={theme}
+                  focused={view === 'agents'}
+                  approvalOpen={proposal !== null}
+                />
+              )}
+
+              {view === 'world' && (
+                <div className="h-full">
+                  <WorldMonitor />
+                </div>
+              )}
+
+              {view === 'system' && (
+                <div className="h-full">
+                  <SystemView />
+                </div>
+              )}
+            </main>
+
+            <ChatPanel
+              messages={messages}
+              busy={busy}
+              powered={powered}
+              value={draft}
+              onValueChange={setDraft}
+              ttsEnabled={ttsEnabled}
+              micListening={voice.recording}
+              micLevel={voice.level}
+              voiceNotice={voice.error}
+              canRegenerate={canRegenerate}
+              inlineApproval={inlineApproval}
+              onSend={sendAndAsk}
+              onStop={stopChat}
+              onRegenerate={regenerate}
+              onApprove={(ok) => void decide(ok)}
+              onToggleMic={voice.toggle}
+              onToggleTts={toggleTts}
+              onClear={handleClearChat}
+            />
+          </div>
         </div>
-      )}
-      {proposal && (
-        <ConfirmationModal proposal={proposal} busy={deciding} onDecide={(ok) => void decide(ok)} />
-      )}
-      {updateOpen && (
-        <UpdateOverlay
-          status={updateStatus}
-          onClose={() => setUpdateOpen(false)}
-          onCheck={check}
-          onInstall={install}
-        />
-      )}
-      {settingsOpen && (
-        <SettingsPanel
-          onClose={() => setSettingsOpen(false)}
-          theme={theme}
-          onSetTheme={setTheme}
-          wakeEnabled={wakeEnabled}
-          wakeStatus={wake.status}
-          wakeDownloadPercent={wake.downloadPercent}
-          wakeError={wake.error}
-          wakePhrases={wake.phrases}
-          onToggleWake={toggleWake}
-        />
-      )}
-    </div>
+
+        {outcome && (
+          <div
+            className={`action-toast ${outcome.approved ? 'toast-ok' : 'toast-cancel'}`}
+            onClick={dismissOutcome}
+          >
+            {outcome.message}
+          </div>
+        )}
+        {blockingProposal && (
+          <ConfirmationModal
+            proposal={blockingProposal}
+            busy={deciding}
+            onDecide={(ok) => void decide(ok)}
+          />
+        )}
+        {updateOpen && (
+          <UpdateOverlay
+            status={updateStatus}
+            onClose={() => setUpdateOpen(false)}
+            onCheck={check}
+            onInstall={install}
+          />
+        )}
+        {settingsOpen && (
+          <SettingsPanel
+            onClose={() => setSettingsOpen(false)}
+            theme={theme}
+            onSetTheme={setTheme}
+            wakeEnabled={wakeEnabled}
+            wakeStatus={wake.status}
+            wakeDownloadPercent={wake.downloadPercent}
+            wakeError={wake.error}
+            wakePhrases={wake.phrases}
+            onToggleWake={toggleWake}
+            motionSetting={motion.setting}
+            onSetMotionSetting={motion.setSetting}
+          />
+        )}
+      </div>
+    </MotionConfig>
   )
 }

@@ -503,7 +503,8 @@
   padding: 8px 22px;
   border-radius: 8px;
   background-color: rgb(var(--c-warn));
-  color: #17130a;
+  /* Dark text on the amber fill, taken from the base tone so no raw hex is needed. */
+  color: rgb(var(--c-base));
   font-weight: 600;
   font-size: 13px;
 }
@@ -640,4 +641,22 @@
   .orbit-line {
     animation: none !important;
   }
+}
+
+/* The in-app Reduce motion switch sets this on the root, so the choice is honored even
+   when the OS preference says otherwise. */
+[data-reduced-motion='true'] *,
+[data-reduced-motion='true'] *::before,
+[data-reduced-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Nothing animates in a hidden window. */
+[data-window-hidden='true'] *,
+[data-window-hidden='true'] *::before,
+[data-window-hidden='true'] *::after {
+  animation-play-state: paused !important;
 }

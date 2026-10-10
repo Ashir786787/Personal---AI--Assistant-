@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import type { ActionProposal } from '@shared/ipc'
 import type { UiMessage } from '../../hooks/useChat'
 import { MessageList } from './MessageList'
 import { ChatInput } from './ChatInput'
+import { ApprovalInline } from './ApprovalInline'
 
 interface ChatPanelProps {
   messages: UiMessage[]
@@ -13,7 +15,13 @@ interface ChatPanelProps {
   micListening: boolean
   micLevel: number
   voiceNotice: string | null
+  canRegenerate: boolean
+  /** Non-destructive approvals render inline; destructive ones use the blocking modal. */
+  inlineApproval: { proposal: ActionProposal; queued: number; busy: boolean } | null
   onSend: (text: string) => void
+  onStop: () => void
+  onRegenerate: () => void
+  onApprove: (approved: boolean) => void
   onToggleMic: () => void
   onToggleTts: () => void
   onClear: () => Promise<void>
@@ -29,7 +37,12 @@ export function ChatPanel({
   micListening,
   micLevel,
   voiceNotice,
+  canRegenerate,
+  inlineApproval,
   onSend,
+  onStop,
+  onRegenerate,
+  onApprove,
   onToggleMic,
   onToggleTts,
   onClear
@@ -96,7 +109,17 @@ export function ChatPanel({
           </button>
         )}
       </div>
-      <MessageList messages={messages} />
+      <MessageList messages={messages} onSuggestion={onValueChange} />
+      {inlineApproval && (
+        <div className="border-t border-edge px-4 py-3">
+          <ApprovalInline
+            proposal={inlineApproval.proposal}
+            busy={inlineApproval.busy}
+            queued={inlineApproval.queued}
+            onDecide={onApprove}
+          />
+        </div>
+      )}
       <ChatInput
         value={value}
         onValueChange={onValueChange}
@@ -106,7 +129,10 @@ export function ChatPanel({
         micListening={micListening}
         micLevel={micLevel}
         voiceNotice={voiceNotice}
+        canRegenerate={canRegenerate}
         onSend={onSend}
+        onStop={onStop}
+        onRegenerate={onRegenerate}
         onToggleMic={onToggleMic}
         onToggleTts={onToggleTts}
       />

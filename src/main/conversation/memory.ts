@@ -56,6 +56,26 @@ export class ConversationMemory {
     return this.messages.slice(-limit)
   }
 
+  /**
+   * Removes the last user message and everything after it, so a regenerate can re-ask
+   * the same question without keeping the discarded answer in context or on disk.
+   */
+  dropLastUserTurn(): string | null {
+    let cut = -1
+    for (let index = this.messages.length - 1; index >= 0; index -= 1) {
+      const message = this.messages[index]
+      if (message && message.role === 'user') {
+        cut = index
+        break
+      }
+    }
+    if (cut === -1) return null
+    const removed = this.messages[cut]
+    this.messages = this.messages.slice(0, cut)
+    this.saveToDisk()
+    return removed?.content ?? null
+  }
+
   clear(): void {
     this.messages = []
     this.saveToDisk()

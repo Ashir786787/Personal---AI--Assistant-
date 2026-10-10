@@ -54,7 +54,7 @@ export function WorldClocks() {
               {zone.label}
             </span>
             <strong>{clockFor(zone.zone)}</strong>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink/50">
+            <span className="font-mono text-[11px] uppercase tracking-widest text-ink/50">
               {offset ?? 'local'}
             </span>
           </div>

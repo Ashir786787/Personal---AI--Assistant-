@@ -1,11 +1,13 @@
-import type { SendChatRequest, SendChatResponse, StreamEvent } from './chat'
+import type { RegenerateChatResponse, SendChatRequest, SendChatResponse, StreamEvent } from './chat'
 import type { FeedBatch } from './feed'
 import type { ProviderId } from './providers'
 
 export const IPC = {
   chatSend: 'chat:send',
+  chatRegenerate: 'chat:regenerate',
   chatCancel: 'chat:cancel',
   chatClear: 'chat:clear',
+  chatClearAll: 'chat:clear-all',
   chatStream: 'chat:stream',
   statusSnapshot: 'status:snapshot',
   voiceTranscribe: 'voice:transcribe',
@@ -37,7 +39,14 @@ export interface ActionProposal {
   title: string
   detailLines: string[]
   totalMoves: number
+  /** After this the main process refuses the decision and the user must be asked again. */
+  expiresAt: number
+  /** Destructive actions use the blocking modal; the rest stay inline in the chat. */
+  destructive: boolean
 }
+
+/** What a tool builds; the main process adds the deadline and the risk class. */
+export type ProposalCardDraft = Omit<ActionProposal, 'expiresAt' | 'destructive'>
 
 export interface ProviderKeyStatus {
   gemini: boolean
@@ -73,6 +82,14 @@ export interface SystemStats {
 export interface MemorySummary {
   messageCount: number
   oldestAt: number | null
+  /** Main transcript plus every town agent's own memory, so the UI cannot overstate it. */
+  agentMessageCount: number
+  storeCount: number
+}
+
+export interface ClearAllResult {
+  cleared: string[]
+  failed: string[]
 }
 
 export interface WakeModelStateInfo {
@@ -93,8 +110,10 @@ export interface StatusSnapshot {
 
 export interface AshirsBridge {
   sendChat(request: SendChatRequest): Promise<SendChatResponse>
+  regenerateChat(): Promise<RegenerateChatResponse | null>
   cancelChat(): void
   clearChat(): Promise<void>
+  clearAllMemory(): Promise<ClearAllResult>
   onStreamEvent(listener: (event: StreamEvent) => void): () => void
   transcribeVoice(recording: VoiceRecording): Promise<string>
   onProposal(listener: (proposal: ActionProposal) => void): () => void

@@ -73,7 +73,9 @@ export function CoreView({
   const line = powerLine(power, { wakeOn })
 
   const liveLine: Record<CircuitId | 'settings', string> = {
-    memory: summary ? `${summary.messageCount} messages` : 'Loading…',
+    memory: summary
+      ? `${summary.messageCount + summary.agentMessageCount} messages · ${summary.storeCount} stores`
+      : 'Loading…',
     skills: skills ? `${skills.length} tools` : 'Loading…',
     soul: readSoulSummary(),
     settings:
@@ -97,20 +99,15 @@ export function CoreView({
   return (
     <div className="relative flex h-full flex-col">
       <div ref={stageRef} className="relative flex min-h-0 flex-1 items-center justify-center">
-        <button
-          type="button"
-          aria-label="Toggle AI power"
-          onClick={power.status === 'off' ? onStart : onToggleMic}
-          className="shrink-0"
-        >
-          <VoiceOrb
-            state={orbState}
-            level={level}
-            size={orbD}
-            powerOn={power.status !== 'off' && power.status !== 'error'}
-            onToggle={power.status === 'off' ? onStart : onToggleMic}
-          />
-        </button>
+        {/* VoiceOrb is itself the button; wrapping it in another one would nest two
+            controls and break click, focus and screen-reader behaviour. */}
+        <VoiceOrb
+          state={orbState}
+          level={level}
+          size={orbD}
+          powerOn={power.status !== 'off' && power.status !== 'error'}
+          onToggle={power.status === 'off' ? onStart : onToggleMic}
+        />
       </div>
 
       <div className="relative shrink-0 px-6 pb-2 text-center">

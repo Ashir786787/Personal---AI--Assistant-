@@ -235,12 +235,13 @@ export async function maybeDelegateComplex(
     if (!config.connected) continue
     if (ctx.controller.signal.aborted) break
 
-    ctx.emit({ type: 'agent', name: config.name, state: 'start' })
+    ctx.emit({ type: 'agent', agentId, name: config.name, state: 'start' })
     const text = await runAgentTurn(ctx, agentId, ctx.userText)
     if (!text.startsWith('SKIP:')) {
       reports.push({ id: agentId, name: config.name, text })
     }
-    ctx.emit({ type: 'agent', name: config.name, state: 'done' })
+    const failed = text.startsWith('SKIP:') || text.startsWith('AGENT_ERROR:')
+    ctx.emit({ type: 'agent', agentId, name: config.name, state: failed ? 'failed' : 'done' })
   }
 
   return { handled: true, reports }
